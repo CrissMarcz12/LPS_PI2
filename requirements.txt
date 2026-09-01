@@ -1,0 +1,7 @@
+# La API Solutions usada por main.py existe en esta linea 0.10.x.
+# No usar >=: MediaPipe 1.x retiro mp.solutions.
+mediapipe==0.10.14
+opencv-contrib-python>=4.8,<5
+numpy>=1.26
+scikit-learn>=1.4
+joblib>=1.3
