@@ -37,6 +37,10 @@ class LandmarkSequence:
     def ready(self) -> bool:
         return len(self._frames) == self.length
 
+    @property
+    def frame_count(self) -> int:
+        return len(self._frames)
+
     def flattened(self) -> np.ndarray:
         if not self.ready:
             raise RuntimeError("Aun no hay suficientes frames en el buffer.")

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>RimayMaki | Actividad</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="game-page">
+  <header class="topbar">
+    <a href="/" class="logo"><span class="logo-mark">RM</span><span>RIMAY<span class="logo-accent">MAKI</span></span></a>
+    <div class="session-progress" id="progress-label">Actividad 1 / 10</div>
+    <div class="hud"><span>⭐ <b id="header-xp">0</b> XP</span><span>🔥 <b id="header-streak">0</b></span></div>
+  </header>
+  <main id="app" aria-live="polite">
+    <section id="empty-state" class="empty-state hidden"><span class="empty-icon">✦</span><p class="eyebrow">PREPARA TU PRÁCTICA</p><h1>Aún no hay modelos</h1><p>No existen letras entrenadas disponibles para jugar.</p><a class="button secondary" href="/">Volver al inicio</a></section>
+    <section id="game-state" class="hidden">
+      <div class="progress-track"><div id="progress-bar"></div></div>
+      <div class="game-layout">
+        <section class="camera-panel">
+          <div class="panel-heading"><div><p class="eyebrow">CÁMARA EN VIVO</p><h1>Haz la seña con tu mano</h1></div><div class="camera-status"><span id="camera-dot"></span><span id="camera-label">Preparando cámara...</span></div></div>
+          <div class="camera-stage"><video id="camera" autoplay muted playsinline></video><canvas id="landmarks" aria-label="Landmarks detectados"></canvas><canvas id="capture" class="hidden"></canvas><div class="camera-message" id="camera-message">Activa la cámara para comenzar.</div></div>
+          <div class="camera-meta"><span id="frames-status">Esperando frames</span><span id="debug-status" class="hidden"></span></div>
+          <div class="prediction-card"><div><p class="eyebrow">LETRA DETECTADA</p><strong id="detected-letter">--</strong></div><p id="detected-confidence">Esperando una mano</p></div>
+          <div class="feedback waiting" id="feedback"><strong id="feedback-title">🟡 ANALIZANDO</strong><p id="feedback-text">Coloca tu mano frente a la cámara.</p></div>
+          <div class="actions"><button id="retry" class="button secondary hidden">↻ INTENTAR NUEVAMENTE</button><button id="next" class="button primary">SIGUIENTE <span>→</span></button></div>
+        </section>
+        <aside class="activity-sidebar">
+          <section class="target-card"><p class="eyebrow">LETRA OBJETIVO</p><div class="target" id="target-letter">--</div><div class="target-caption">Encuentra esta seña</div></section>
+          <section class="reference-card"><p class="eyebrow">ASÍ SE REALIZA</p><div class="sign-reference"><img id="reference-image" alt="Referencia de la seña"><div id="reference-placeholder">Referencia no disponible</div></div></section>
+          <section class="score-card"><div><span>⭐ XP</span><strong id="score">0</strong></div><div><span>🔥 Racha</span><strong id="streak">0</strong></div><div><span>✓ Aciertos</span><strong id="correct">0</strong></div><div><span>✕ Errores</span><strong id="wrong">0</strong></div></section>
+        </aside>
+      </div>
+    </section>
+    <section id="results-state" class="results-card hidden"><span class="empty-icon">★</span><p class="eyebrow">SESIÓN COMPLETADA</p><h1>Terminaste tu práctica</h1><div class="final-score"><strong id="final-score">0</strong><span>XP</span></div><div class="results-grid"><p>✓ <b id="final-correct">0</b> aciertos</p><p>✕ <b id="final-wrong">0</b> errores</p><p>🔥 racha máxima: <b id="final-streak">0</b></p><p>Precisión: <b id="final-accuracy">0%</b></p></div><a class="button primary" href="/game">JUGAR DE NUEVO</a></section>
+  </main>
+  <script type="module" src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
