@@ -27,6 +27,7 @@ class SessionState:
     stable_prediction: str | None = None
     stable_confidence: float | None = None
     error_hint: str | None = None
+    low_confidence_frames: int = 0
 
     def __post_init__(self) -> None:
         if self.available_letters:
@@ -36,7 +37,7 @@ class SessionState:
     def completed(self) -> bool:
         return self.current_round > self.total_rounds
 
-    def evaluate(self, prediction: Prediction, threshold: float, error_hint: str | None = None) -> None:
+    def evaluate(self, prediction: Prediction, threshold: float, error_hint: str | None = None, low_confidence_limit: int = 5) -> None:
         if self.completed or self.result in {"correct", "incorrect"}:
             return
         if prediction.confidence <= 0:
@@ -44,13 +45,23 @@ class SessionState:
             self.confidence = None
             self.stable_prediction = None
             self.stable_confidence = None
+            self.low_confidence_frames = 0
             self.result = "no_hand"
             return
         self.confidence = prediction.confidence
         if prediction.confidence < threshold:
             self.prediction = None
-            self.result = "analyzing"
+            self.low_confidence_frames += 1
+            if self.low_confidence_frames >= low_confidence_limit:
+                self.current_streak = 0
+                self.wrong_answers += 1
+                self.awarded_points = 0
+                self.error_hint = error_hint or "Acerca tu mano y copia la forma de la imagen."
+                self.result = "incorrect"
+            else:
+                self.result = "analyzing"
             return
+        self.low_confidence_frames = 0
         # La letra se muestra en vivo, pero no resuelve la ronda hasta que la
         # ventana temporal del clasificador la confirme.
         self.prediction = prediction.letter
@@ -78,6 +89,7 @@ class SessionState:
             self.prediction = None
             self.confidence = None
             self.error_hint = None
+            self.low_confidence_frames = 0
             self.result = "waiting"
 
     def next_round(self) -> None:
@@ -89,6 +101,7 @@ class SessionState:
         self.stable_prediction = None
         self.stable_confidence = None
         self.error_hint = None
+        self.low_confidence_frames = 0
         self.result = "waiting"
         self.awarded_points = 0
         self.target = None if self.completed else random.choice(self.available_letters)

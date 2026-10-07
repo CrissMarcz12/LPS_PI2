@@ -20,5 +20,5 @@ document.querySelector("#next").addEventListener("click", async () => { camera?.
 document.querySelector("#retry").addEventListener("click", async () => { const state = await safely(retryRound); if (state) { apply(state); await safely(startRecognition); } });
 const fullscreen = document.querySelector("#fullscreen");
 fullscreen.addEventListener("click", async () => { const stage = document.querySelector("#camera-stage"); try { if (document.fullscreenElement) await document.exitFullscreen(); else if (stage.requestFullscreen) await stage.requestFullscreen(); else stage.webkitRequestFullscreen?.(); } catch (error) { console.warn("No se pudo activar pantalla completa", error); } });
-document.addEventListener("fullscreenchange", () => { const active = Boolean(document.fullscreenElement); fullscreen.textContent = active ? "×" : "⛶"; fullscreen.setAttribute("aria-label", active ? "Salir de pantalla completa" : "Activar pantalla completa"); });
+document.addEventListener("fullscreenchange", () => { const active = Boolean(document.fullscreenElement); document.body.classList.toggle("immersive", active); fullscreen.textContent = active ? "×" : "⛶"; fullscreen.setAttribute("aria-label", active ? "Salir de pantalla completa" : "Activar pantalla completa"); });
 safely(startRecognition);

@@ -47,6 +47,15 @@ class GamePipelineTests(unittest.TestCase):
         observed[5 * 3:9 * 3] = 4  # Índice: landmarks 5 al 8.
         self.assertEqual(classifier.guidance_for("A", observed), "Revisa la posición de tu índice.")
 
+    def test_low_confidence_becomes_a_correctable_error(self):
+        session = SessionState(("A",), 1)
+        uncertain = Prediction(None, .5, False)
+        session.evaluate(uncertain, CONFIDENCE_THRESHOLD, "Revisa la posición de tu pulgar.", low_confidence_limit=2)
+        self.assertEqual(session.result, "analyzing")
+        session.evaluate(uncertain, CONFIDENCE_THRESHOLD, "Revisa la posición de tu pulgar.", low_confidence_limit=2)
+        self.assertEqual(session.result, "incorrect")
+        self.assertEqual(session.error_hint, "Revisa la posición de tu pulgar.")
+
 
 if __name__ == "__main__":
     unittest.main()

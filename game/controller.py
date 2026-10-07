@@ -1,7 +1,7 @@
 """Coordina una sesión activa sin mezclar reglas de juego con rutas Flask."""
 from __future__ import annotations
 import threading
-from config import (CONFIDENCE_THRESHOLD, DEBUG_MODE, DRAW_LANDMARKS,
+from config import (CONFIDENCE_THRESHOLD, DEBUG_MODE, DRAW_LANDMARKS, LOW_CONFIDENCE_FRAMES_REQUIRED,
                     PREDICTION_HISTORY_SIZE, RECOGNITION_FPS,
                     STABLE_FRAMES_REQUIRED, TOTAL_ROUNDS)
 from recognition.classifier import AvailableLettersClassifier, available_models
@@ -42,7 +42,7 @@ class GameController:
                     prediction=prediction,
                 )
                 error_hint = self.recognizer.classifier.guidance_for(self.state.target, self.recognizer.last_features)
-                self.state.evaluate(prediction, CONFIDENCE_THRESHOLD, error_hint)
+                self.state.evaluate(prediction, CONFIDENCE_THRESHOLD, error_hint, LOW_CONFIDENCE_FRAMES_REQUIRED)
             except (ValueError, RuntimeError):
                 self.error = "No pudimos analizar la imagen de cámara."
             return self.payload()
