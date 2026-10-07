@@ -57,7 +57,6 @@ export function render(state) {
     incorrect:["✕ CASI", state.errorHint || "Mira la foto e inténtalo otra vez."],
   };
   [title.textContent, text.textContent] = copy[state.result] || copy.waiting;
-  $("retry").classList.toggle("hidden", state.result !== "incorrect");
   playFeedbackSound(state.result); previousResult = state.result;
 }
 function renderResults(state) { showState("results-state"); [["final-score",state.score],["final-correct",state.correctAnswers],["final-wrong",state.wrongAnswers],["final-streak",state.maxStreak],["final-accuracy",`${state.accuracy}%`]].forEach(([id,value]) => $(id).textContent=value); }

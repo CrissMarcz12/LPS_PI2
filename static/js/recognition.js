@@ -26,16 +26,18 @@ export class BrowserCamera {
   }
   recordFrame() { const now = performance.now(); this.sentAt.push(now); if (this.sentAt.length > 30) this.sentAt.shift(); }
   get cameraFps() { if (this.sentAt.length < 2) return 0; const elapsed = this.sentAt.at(-1) - this.sentAt[0]; return elapsed ? Math.round(((this.sentAt.length - 1) * 1000 / elapsed) * 10) / 10 : 0; }
-  drawLandmarks(points = []) {
+  drawLandmarks(points = [], correctionHint = "") {
     const canvas = this.landmarkCanvas, width = this.video.videoWidth, height = this.video.videoHeight;
     if (!width || !height) return;
     canvas.width = width; canvas.height = height;
     const context = canvas.getContext("2d"); context.clearRect(0, 0, width, height);
     if (!points.length) return;
+    const fingers = { pulgar:[1,2,3,4], "índice":[5,6,7,8], "dedo medio":[9,10,11,12], "dedo anular":[13,14,15,16], "meñique":[17,18,19,20] };
+    const highlighted = Object.entries(fingers).find(([name]) => correctionHint.includes(name))?.[1] || [];
     context.strokeStyle = "#ffffff"; context.fillStyle = "#ffdc5d"; context.lineWidth = Math.max(2, width / 360);
     context.shadowColor = "#24346d"; context.shadowBlur = 4;
-    for (const [from, to] of CONNECTIONS) { context.beginPath(); context.moveTo(points[from].x * width, points[from].y * height); context.lineTo(points[to].x * width, points[to].y * height); context.stroke(); }
-    for (const point of points) { context.beginPath(); context.arc(point.x * width, point.y * height, Math.max(3, width / 180), 0, Math.PI * 2); context.fill(); }
+    for (const [from, to] of CONNECTIONS) { context.strokeStyle = highlighted.includes(from) && highlighted.includes(to) ? "#ff3f5e" : "#ffffff"; context.beginPath(); context.moveTo(points[from].x * width, points[from].y * height); context.lineTo(points[to].x * width, points[to].y * height); context.stroke(); }
+    for (const [index, point] of points.entries()) { context.fillStyle = highlighted.includes(index) ? "#ff3f5e" : "#ffdc5d"; context.beginPath(); context.arc(point.x * width, point.y * height, Math.max(3, width / 180), 0, Math.PI * 2); context.fill(); }
     context.shadowBlur = 0;
   }
   stop() { clearInterval(this.timer); this.timer = null; this.stream?.getTracks().forEach(track => track.stop()); this.stream = null; this.sentAt = []; this.drawLandmarks([]); }
