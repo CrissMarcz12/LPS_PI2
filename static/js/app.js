@@ -6,7 +6,8 @@ let camera;
 function apply(state) {
   if (!state || typeof state !== "object") throw new Error("Respuesta inválida del servicio.");
   render(state); camera?.drawLandmarks(state.showLandmarks && Array.isArray(state.landmarks) ? state.landmarks : []);
-  if (["correct", "incorrect", "completed"].includes(state.result)) camera?.stop();
+  // La cámara sigue visible debajo de la celebración; solo se detiene al terminar la sesión.
+  if (state.result === "completed") camera?.stop();
 }
 async function startRecognition() {
   const state = await getSession(); apply(state); if (!state.target) return;
