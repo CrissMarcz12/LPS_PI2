@@ -41,6 +41,7 @@ export function render(state) {
   stage.classList.toggle("is-incorrect", state.result === "incorrect");
   celebration.classList.toggle("hidden", !isCorrect);
   const tryAgain = $("try-again"), isIncorrect = state.result === "incorrect";
+  $("error-wash").classList.toggle("active", isIncorrect);
   tryAgain.classList.toggle("hidden", !isIncorrect);
   if (isIncorrect) $("error-hint").textContent = state.errorHint || "Mira la foto e inténtalo otra vez.";
   if (isCorrect) {
