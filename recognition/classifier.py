@@ -6,6 +6,7 @@ from pathlib import Path
 import json
 import joblib
 import numpy as np
+from features.labels import normalize_label
 
 MODEL_FILENAME = "classifier.joblib"
 METADATA_FILENAME = "metadata.json"
@@ -32,10 +33,7 @@ class LetterModel:
         return np.exp(-0.3 * np.square(self._distance(samples) / self.limit_))
 
 def _safe_label(label: str) -> str:
-    label = label.strip().upper()
-    if not label or not label.isalpha() or len(label) != 1:
-        raise ValueError("La clase debe ser una única letra.")
-    return label
+    return normalize_label(label)
 
 def save_letter_model(label: str, samples: np.ndarray, model_root: Path, sequence_length: int) -> Path:
     label = _safe_label(label); model = LetterModel().fit(samples); destination = model_root / label

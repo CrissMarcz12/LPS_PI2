@@ -2,19 +2,54 @@
 from __future__ import annotations
 
 from datetime import datetime
+from io import BytesIO
 from pathlib import Path
+import shutil
 from uuid import uuid4
 
 import numpy as np
+from PIL import Image, UnidentifiedImageError
 
-from config import DATASETS_DIR, SEQUENCE_LENGTH, VECTOR_SIZE
+from config import (DATASETS_DIR, MODELS_DIR, REFERENCE_IMAGES_DIR,
+                    SEED_MODELS_DIR, SEED_REFERENCE_IMAGES_DIR,
+                    SEQUENCE_LENGTH, VECTOR_SIZE)
+from features.labels import normalize_label
 
 
-def normalize_label(label: str) -> str:
-    value = label.strip().upper()
-    if not value.isalpha() or len(value) != 1:
-        raise ValueError("La clase debe ser una única letra.")
-    return value
+def initialize_storage() -> None:
+    """Crea el volumen de datos y conserva los ejemplos incluidos al primer uso."""
+    for directory in (DATASETS_DIR, MODELS_DIR, REFERENCE_IMAGES_DIR):
+        directory.mkdir(parents=True, exist_ok=True)
+    for source_root, destination_root in ((SEED_MODELS_DIR, MODELS_DIR),
+                                          (SEED_REFERENCE_IMAGES_DIR, REFERENCE_IMAGES_DIR)):
+        if not source_root.exists():
+            continue
+        for source in source_root.iterdir():
+            destination = destination_root / source.name
+            if not destination.exists():
+                if source.is_dir():
+                    shutil.copytree(source, destination)
+                elif source.is_file():
+                    shutil.copy2(source, destination)
+
+
+def reference_path(label: str) -> Path:
+    return REFERENCE_IMAGES_DIR / f"{normalize_label(label)}.png"
+
+
+def save_reference(label: str, image_bytes: bytes) -> Path:
+    """Verifica y normaliza una imagen subida antes de guardarla como PNG."""
+    label = normalize_label(label)
+    if not image_bytes:
+        raise ValueError("Selecciona una imagen de referencia.")
+    try:
+        with Image.open(BytesIO(image_bytes)) as image:
+            image.verify()
+        with Image.open(BytesIO(image_bytes)) as image:
+            image.convert("RGBA").save(reference_path(label), "PNG", optimize=True)
+    except (UnidentifiedImageError, OSError, ValueError) as exc:
+        raise ValueError("La referencia debe ser una imagen válida (PNG, JPG o WEBP).") from exc
+    return reference_path(label)
 
 
 def sample_files(label: str) -> list[Path]:

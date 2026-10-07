@@ -1,40 +1,34 @@
 # RimayMaki
 
-Juego web local para practicar letras estáticas de LSP. Chrome solicita acceso a la cámara al iniciar una partida; los fotogramas se procesan localmente con MediaPipe y los modelos ya entrenados. La pantalla inicial contiene **RIMAYMAKI**, su lema y **START**.
+Juego web para practicar señas estáticas de LSP con cámara. El juego reconoce los modelos entrenados, da retroalimentación visual y muestra una referencia de la seña.
 
-## Ejecutar el juego
+## Uso local
 
 ```powershell
 python -m pip install -r requirements.txt
 python main.py
 ```
 
-Se abre `http://127.0.0.1:5000` en Chrome cuando está instalado (con respaldo al navegador predeterminado). Si aún no hay modelos, al pulsar START se muestra “No hay letras entrenadas disponibles.”
+Abre `http://127.0.0.1:5000`. El panel de entrenamiento está en `http://127.0.0.1:5000/training`.
 
-El panel de desarrollo local está disponible en `http://127.0.0.1:5000/training`. Captura landmarks desde la cámara, permite ver el conteo por letra y entrena directamente el modelo que después consume el juego. No genera muestras ni modelos de ejemplo.
+## Entrenar cualquier seña
 
-## Flujo exclusivo de desarrollo
+En el panel escribe una etiqueta propia: `M`, `1`, `HOLA` o `NÚMERO 1`. Luego:
 
-Captura muestras reales para una letra (SPACE guarda una secuencia de 20 cuadros):
+1. Sube la imagen de referencia de esa seña (PNG, JPG o WEBP).
+2. Activa **Capturar muestras** y registra al menos 20 muestras reales.
+3. Pulsa **Entrenar modelo**.
 
-```powershell
-python training/collect_data.py A
-```
+La misma etiqueta, modelo e imagen aparecen automáticamente en el juego. Las capturas guardan landmarks, no fotos de la cámara. Las etiquetas aceptan hasta 32 caracteres: letras, números, espacios, guiones y guion bajo.
 
-Entrena solo esa letra cuando tenga al menos 20 muestras:
+## Publicar en Render para trabajo en equipo
 
-```powershell
-python training/train_model.py A
-```
+El repositorio incluye `render.yaml`. En Render crea un **Blueprint** desde este repositorio y el archivo configurará el servidor, `SECRET_KEY` y un disco persistente en `/var/data`.
 
-Esto crea `models/A/classifier.joblib` y su metadata. Repite el flujo para B, C, etc. El juego los incorpora automáticamente sin editar `main.py`. Las capturas se guardan únicamente en `datasets/<LETRA>/`; no se generan muestras ni modelos de ejemplo.
+El disco persistente es importante: guarda muestras, modelos e imágenes de referencia aun cuando Render reinicie o haga un despliegue. Sin disco persistente esos datos se perderían al redeploy. El servicio se inicia con un único proceso para que todos los compañeros vean el mismo conjunto de modelos.
 
-## Referencia visual
+Después de publicar, cada integrante abre `https://tu-servicio.onrender.com/training` para aportar muestras. Cada navegador tiene su propia sesión de cámara; los modelos y las referencias sí son compartidos por el equipo. Como el panel permite crear y borrar datos comunes, compártelo solo con el equipo o protégelo antes de hacerlo público.
 
-Agrega manualmente una referencia verificada para cada letra en `static/assets/signs/A.png` (o `B.png`, etc.). Si no existe la imagen, el juego muestra “Referencia no disponible” sin afectar el reconocimiento.
-python main.py
 ## Parámetros
 
-En `config.py` puedes ajustar `CONFIDENCE_THRESHOLD`, `PREDICTION_HISTORY_SIZE`, `STABLE_FRAMES_REQUIRED`, `RECOGNITION_FPS`, `SAMPLE_CAPTURE_INTERVAL_SECONDS`, `MIN_SAMPLES_PER_CLASS`, `TOTAL_ROUNDS`, `SHOW_LANDMARKS` y `DEBUG_MODE`.
-
-Los modelos estáticos actuales se entrenan con los frames normalizados de cada captura. Esto mantiene las mismas capturas de 20 frames para recolectar variación, pero permite clasificar desde el primer frame durante el juego.
+`config.py` reúne los valores de reconocimiento, como `CONFIDENCE_THRESHOLD`, `MIN_SAMPLES_PER_CLASS`, `TOTAL_ROUNDS` y `SHOW_LANDMARKS`.

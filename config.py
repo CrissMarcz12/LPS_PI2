@@ -1,9 +1,16 @@
 """Rutas y parámetros compartidos por RimayMaki."""
+import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-DATASETS_DIR = ROOT / "datasets"
-MODELS_DIR = ROOT / "models"
+# En Render esta variable debe apuntar al disco persistente (/var/data).
+# Localmente se conserva todo dentro de data/ para no mezclarlo con el código.
+PERSISTENT_DATA_DIR = Path(os.environ.get("RIMAYMAKI_DATA_DIR", ROOT / "data"))
+DATASETS_DIR = PERSISTENT_DATA_DIR / "datasets"
+MODELS_DIR = PERSISTENT_DATA_DIR / "models"
+REFERENCE_IMAGES_DIR = PERSISTENT_DATA_DIR / "references"
+SEED_MODELS_DIR = ROOT / "models"
+SEED_REFERENCE_IMAGES_DIR = ROOT / "static" / "assets" / "signs"
 
 CAMERA_INDEX = 0
 MAX_HANDS = 1
