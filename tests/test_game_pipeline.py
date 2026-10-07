@@ -45,7 +45,16 @@ class GamePipelineTests(unittest.TestCase):
         classifier = AvailableLettersClassifier(available_models(root, SEQUENCE_LENGTH), .8, PREDICTION_HISTORY_SIZE)
         observed = np.zeros(63, dtype=np.float32)
         observed[5 * 3:9 * 3] = 4  # Índice: landmarks 5 al 8.
-        self.assertEqual(classifier.guidance_for("A", observed), "Revisa la posición de tu índice.")
+        self.assertEqual(classifier.guidance_for("A", observed), "Revisa la posición de: índice.")
+
+    def test_guidance_marks_multiple_similarly_wrong_fingers(self):
+        root = Path(tempfile.mkdtemp())
+        samples = np.zeros((4, 63), dtype=np.float32)
+        save_letter_model("A", samples, root, SEQUENCE_LENGTH)
+        classifier = AvailableLettersClassifier(available_models(root, SEQUENCE_LENGTH), .8, PREDICTION_HISTORY_SIZE)
+        observed = np.zeros(63, dtype=np.float32)
+        observed[5 * 3:17 * 3] = 4
+        self.assertEqual(classifier.guidance_for("A", observed), "Revisa la posición de: índice, dedo medio, dedo anular.")
 
     def test_low_confidence_becomes_a_correctable_error(self):
         session = SessionState(("A",), 1)

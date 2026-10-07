@@ -33,7 +33,7 @@ export class BrowserCamera {
     const context = canvas.getContext("2d"); context.clearRect(0, 0, width, height);
     if (!points.length) return;
     const fingers = { pulgar:[1,2,3,4], "índice":[5,6,7,8], "dedo medio":[9,10,11,12], "dedo anular":[13,14,15,16], "meñique":[17,18,19,20] };
-    const highlighted = Object.entries(fingers).find(([name]) => correctionHint.includes(name))?.[1] || [];
+    const highlighted = Object.entries(fingers).filter(([name]) => correctionHint.includes(name)).flatMap(([, indexes]) => indexes);
     context.strokeStyle = "#ffffff"; context.fillStyle = "#ffdc5d"; context.lineWidth = Math.max(2, width / 360);
     context.shadowColor = "#24346d"; context.shadowBlur = 4;
     for (const [from, to] of CONNECTIONS) { context.strokeStyle = highlighted.includes(from) && highlighted.includes(to) ? "#ff3f5e" : "#ffffff"; context.beginPath(); context.moveTo(points[from].x * width, points[from].y * height); context.lineTo(points[to].x * width, points[to].y * height); context.stroke(); }

@@ -89,8 +89,12 @@ class AvailableLettersClassifier:
             "pulgar": (1, 5), "índice": (5, 9), "dedo medio": (9, 13),
             "dedo anular": (13, 17), "meñique": (17, 21),
         }
-        finger = max(groups, key=lambda name: float(np.mean(deviation[slice(*groups[name])])) )
-        return f"Revisa la posición de tu {finger}."
+        scores = {name: float(np.mean(deviation[slice(*range_)])) for name, range_ in groups.items()}
+        highest = max(scores.values())
+        # Una mano abierta ante una seña cerrada puede desviar varios dedos:
+        # se señalan todos los que alcanzan una desviación comparable, no solo el peor.
+        fingers = [name for name, score in scores.items() if score >= max(.5, highest * .60)]
+        return f"Revisa la posición de: {', '.join(fingers)}."
 
     @property
     def frames_seen(self) -> int:
