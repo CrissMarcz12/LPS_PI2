@@ -36,6 +36,9 @@ export function render(state) {
   const feedback = $("feedback"), title = $("feedback-title"), text = $("feedback-text"); feedback.className = `feedback ${state.result}`;
   const celebration = $("celebration"), next = $("next");
   const isCorrect = state.result === "correct";
+  const stage = $("camera-stage");
+  stage.classList.toggle("is-correct", isCorrect);
+  stage.classList.toggle("is-incorrect", state.result === "incorrect");
   celebration.classList.toggle("hidden", !isCorrect);
   const tryAgain = $("try-again"), isIncorrect = state.result === "incorrect";
   tryAgain.classList.toggle("hidden", !isIncorrect);
