@@ -41,7 +41,8 @@ class GameController:
                     frames_collected=self.recognizer.frames_collected,
                     prediction=prediction,
                 )
-                self.state.evaluate(prediction, CONFIDENCE_THRESHOLD)
+                error_hint = self.recognizer.classifier.guidance_for(self.state.target, self.recognizer.last_features)
+                self.state.evaluate(prediction, CONFIDENCE_THRESHOLD, error_hint)
             except (ValueError, RuntimeError):
                 self.error = "No pudimos analizar la imagen de cámara."
             return self.payload()

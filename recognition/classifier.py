@@ -3,7 +3,6 @@ from __future__ import annotations
 from collections import Counter, deque
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 import json
 import joblib
 import numpy as np
@@ -79,6 +78,19 @@ class AvailableLettersClassifier:
         stable_scores = [score for candidate, score in self.history if candidate == winner]
         stable_confidence = float(np.mean(stable_scores)) if stable_scores else None
         return Prediction(accepted, confidence, stable, str(winner) if stable else None, stable_confidence if stable else None)
+
+    def guidance_for(self, label: str | None, features: np.ndarray | None) -> str | None:
+        """Indica la zona con mayor diferencia frente a la seña objetivo real."""
+        if not label or features is None or label not in self.models:
+            return None
+        model = self.models[label]
+        deviation = np.abs((features.reshape(-1) - model.center_) / model.scale_).reshape(21, 3)
+        groups = {
+            "pulgar": (1, 5), "índice": (5, 9), "dedo medio": (9, 13),
+            "dedo anular": (13, 17), "meñique": (17, 21),
+        }
+        finger = max(groups, key=lambda name: float(np.mean(deviation[slice(*groups[name])])) )
+        return f"Revisa la posición de tu {finger}."
 
     @property
     def frames_seen(self) -> int:

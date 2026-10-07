@@ -38,6 +38,15 @@ class GamePipelineTests(unittest.TestCase):
         self.assertEqual(session.result, "correct")
         self.assertEqual(session.score, 100)
 
+    def test_guidance_uses_the_most_different_finger(self):
+        root = Path(tempfile.mkdtemp())
+        samples = np.zeros((4, 63), dtype=np.float32)
+        save_letter_model("A", samples, root, SEQUENCE_LENGTH)
+        classifier = AvailableLettersClassifier(available_models(root, SEQUENCE_LENGTH), .8, PREDICTION_HISTORY_SIZE)
+        observed = np.zeros(63, dtype=np.float32)
+        observed[5 * 3:9 * 3] = 4  # Índice: landmarks 5 al 8.
+        self.assertEqual(classifier.guidance_for("A", observed), "Revisa la posición de tu índice.")
+
 
 if __name__ == "__main__":
     unittest.main()

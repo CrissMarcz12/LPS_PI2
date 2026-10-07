@@ -26,6 +26,7 @@ class SessionState:
     prediction_stable: bool = False
     stable_prediction: str | None = None
     stable_confidence: float | None = None
+    error_hint: str | None = None
 
     def __post_init__(self) -> None:
         if self.available_letters:
@@ -35,7 +36,7 @@ class SessionState:
     def completed(self) -> bool:
         return self.current_round > self.total_rounds
 
-    def evaluate(self, prediction: Prediction, threshold: float) -> None:
+    def evaluate(self, prediction: Prediction, threshold: float, error_hint: str | None = None) -> None:
         if self.completed or self.result in {"correct", "incorrect"}:
             return
         if prediction.confidence <= 0:
@@ -69,12 +70,14 @@ class SessionState:
             self.current_streak = 0
             self.wrong_answers += 1
             self.awarded_points = 0
+            self.error_hint = error_hint
             self.result = "incorrect"
 
     def retry(self) -> None:
         if self.result == "incorrect":
             self.prediction = None
             self.confidence = None
+            self.error_hint = None
             self.result = "waiting"
 
     def next_round(self) -> None:
@@ -85,6 +88,7 @@ class SessionState:
         self.confidence = None
         self.stable_prediction = None
         self.stable_confidence = None
+        self.error_hint = None
         self.result = "waiting"
         self.awarded_points = 0
         self.target = None if self.completed else random.choice(self.available_letters)
@@ -111,4 +115,5 @@ class SessionState:
             "framesCollected": self.frames_collected, "predictionStable": self.prediction_stable,
             "stablePrediction": self.stable_prediction,
             "stableConfidence": round(self.stable_confidence * 100, 1) if self.stable_confidence is not None else None,
+            "errorHint": self.error_hint,
         }

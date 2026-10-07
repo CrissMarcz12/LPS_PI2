@@ -16,6 +16,7 @@ class StaticHandRecognizer:
         self._lock = threading.Lock()
         self.last_hand_detected = False
         self.last_landmarks: list[dict[str, float]] = []
+        self.last_features: np.ndarray | None = None
         self.last_inference_ms = 0.0
         self.last_metrics = {"decodeMs": 0.0, "mediapipeMs": 0.0, "normalizationMs": 0.0, "classificationMs": 0.0, "totalMs": 0.0}
         self._processed_at: deque[float] = deque(maxlen=30)
@@ -41,6 +42,7 @@ class StaticHandRecognizer:
                 self.classifier.reset()
                 self.last_hand_detected = False
                 self.last_landmarks = []
+                self.last_features = None
                 self.last_inference_ms = (time.perf_counter() - started) * 1000
                 self._record_processed()
                 self.last_metrics = {"decodeMs": round((decoded-started)*1000, 1), "mediapipeMs": round((mediapipe_done-decoded)*1000, 1), "normalizationMs": 0.0, "classificationMs": 0.0, "totalMs": round(self.last_inference_ms, 1)}
@@ -49,6 +51,7 @@ class StaticHandRecognizer:
             self.last_hand_detected = True
             self.last_landmarks = [{"x": float(point.x), "y": float(point.y)} for point in hand.landmark]
             features = normalized_hand_vector(hand)
+            self.last_features = features
             normalized_done = time.perf_counter()
             prediction = self.classifier.predict(features)
             finished = time.perf_counter()
@@ -80,6 +83,7 @@ class StaticHandRecognizer:
             self.classifier.reset()
             self.last_hand_detected = False
             self.last_landmarks = []
+            self.last_features = None
             self.last_inference_ms = 0.0
             self.last_metrics = {"decodeMs": 0.0, "mediapipeMs": 0.0, "normalizationMs": 0.0, "classificationMs": 0.0, "totalMs": 0.0}
             self._processed_at.clear()
