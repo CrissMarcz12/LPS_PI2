@@ -4,7 +4,7 @@ export function render(state) {
   if (!state.target) { showState("empty-state"); return; }
   if (state.result === "completed") { renderResults(state); return; }
   showState("game-state");
-  $("target-letter").textContent = state.target; $("detected-letter").textContent = state.prediction || "—";
+  $("target-letter").textContent = state.target; $("target-letter-tablet").textContent = state.target; $("detected-letter").textContent = state.prediction || "—";
   $("progress-label").textContent = `Actividad ${state.currentRound} / ${state.totalRounds}`;
   $("progress-bar").style.width = `${((state.currentRound - 1) / state.totalRounds) * 100}%`;
   $("header-xp").textContent = state.score; $("header-streak").textContent = state.currentStreak;
