@@ -1,0 +1,18 @@
+import { BrowserCamera } from "./recognition.js";
+
+const $ = id => document.getElementById(id); let camera, capturing = false, minimum = 20, intervalMs = 100;
+const api = async (path, options = {}) => { const response = await fetch(path, options); const data = await response.json(); if (!response.ok) throw new Error(data.message || "No se pudo completar la acción."); return data; };
+const json = body => ({method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
+function status(message, error = false) { $("training-notice").textContent = message; $("training-notice").className = error ? "error" : ""; }
+function drawCounts(counts) { const letters = Object.keys(counts).sort(); $("letter-counts").innerHTML = letters.length ? letters.map(letter => `<span>${letter}<b>${counts[letter]}</b></span>`).join("") : "<span>Aún no hay muestras.</span>"; }
+function setCameraStatus(active, message) { $("training-dot").classList.toggle("active",active); $("training-camera-status").textContent=message; $("training-message").classList.toggle("hidden",active); if(!active) $("training-message").textContent=message; }
+async function configure(active = capturing) { const data = await api("/api/training/configure",json({label:$("training-letter").value,capturing:active})); $("training-count").textContent=`${data.sampleCount} / ${minimum} muestras`; return data; }
+async function startCamera() { await configure(false); camera?.stop(); camera = new BrowserCamera($("training-camera"),$("training-capture"),$("training-landmarks"), data => { camera.drawLandmarks(data.landmarks); $("training-hand").textContent=data.handDetected ? `✓ Mano detectada · ${data.framesCollected}/20 frames` : "⚠ Mano no detectada"; $("training-count").textContent=`${data.sampleCount} / ${minimum} muestras`; $("training-prediction").textContent=data.prediction||"—"; $("training-confidence").textContent=data.confidence==null?"":` · ${data.confidence}%`; if(data.saved) status("Muestra guardada."); }, () => setCameraStatus(false,"No se pudo usar la cámara."), async blob => { const form = new FormData(); form.append("frame",blob,"training.jpg"); return api("/api/training/frame",{method:"POST",body:form}); }, intervalMs); const active=await camera.start(); setCameraStatus(active,active?"Cámara activa":"Permite el acceso a la cámara"); }
+async function refresh() { const data=await api("/api/training"); minimum=data.minimumSamples; intervalMs=data.recognitionIntervalMs||100; drawCounts(data.counts); await configure(false); }
+$("capture-toggle").addEventListener("click",async()=>{capturing=true;await configure(true);status("● CAPTURANDO: mueve levemente la mano entre muestras.");});
+$("stop-capture").addEventListener("click",async()=>{capturing=false;await configure(false);status("Captura detenida.");});
+$("training-letter").addEventListener("change",async()=>{capturing=false;await configure(false);await refresh();});
+$("train-model").addEventListener("click",async()=>{const data=await api("/api/training/train",json({label:$("training-letter").value}));status(data.message,!data.success);await refresh();});
+$("clear-samples").addEventListener("click",async()=>{if(!confirm("¿Borrar las muestras reales de esta letra? Esta acción no se puede deshacer."))return;const data=await api("/api/training/clear",json({label:$("training-letter").value}));status(`Se eliminaron ${data.removed} muestras.`);await refresh();});
+for(const letter of "ABCDEFGHIJKLMNÑOPQRSTUVWXYZ")$("training-letter").append(new Option(letter,letter));
+try{await refresh();await startCamera();}catch(error){console.error(error);status(error.message,true);}

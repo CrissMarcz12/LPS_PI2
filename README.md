@@ -11,6 +11,8 @@ python main.py
 
 Se abre `http://127.0.0.1:5000` en Chrome cuando está instalado (con respaldo al navegador predeterminado). Si aún no hay modelos, al pulsar START se muestra “No hay letras entrenadas disponibles.”
 
+El panel de desarrollo local está disponible en `http://127.0.0.1:5000/training`. Captura landmarks desde la cámara, permite ver el conteo por letra y entrena directamente el modelo que después consume el juego. No genera muestras ni modelos de ejemplo.
+
 ## Flujo exclusivo de desarrollo
 
 Captura muestras reales para una letra (SPACE guarda una secuencia de 20 cuadros):
@@ -30,3 +32,9 @@ Esto crea `models/A/classifier.joblib` y su metadata. Repite el flujo para B, C,
 ## Referencia visual
 
 Agrega manualmente una referencia verificada para cada letra en `static/assets/signs/A.png` (o `B.png`, etc.). Si no existe la imagen, el juego muestra “Referencia no disponible” sin afectar el reconocimiento.
+python main.py
+## Parámetros
+
+En `config.py` puedes ajustar `CONFIDENCE_THRESHOLD`, `PREDICTION_HISTORY_SIZE`, `STABLE_FRAMES_REQUIRED`, `RECOGNITION_FPS`, `SAMPLE_CAPTURE_INTERVAL_SECONDS`, `MIN_SAMPLES_PER_CLASS`, `TOTAL_ROUNDS`, `SHOW_LANDMARKS` y `DEBUG_MODE`.
+
+Los modelos estáticos actuales se entrenan con los frames normalizados de cada captura. Esto mantiene las mismas capturas de 20 frames para recolectar variación, pero permite clasificar desde el primer frame durante el juego.

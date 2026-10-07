@@ -9,15 +9,29 @@ export function render(state) {
   $("progress-bar").style.width = `${((state.currentRound - 1) / state.totalRounds) * 100}%`;
   $("header-xp").textContent = state.score; $("header-streak").textContent = state.currentStreak;
   [["score",state.score],["streak",state.currentStreak],["correct",state.correctAnswers],["wrong",state.wrongAnswers]].forEach(([id,value]) => $(id).textContent = value);
-  $("detected-confidence").textContent = state.confidence == null ? "Esperando una mano" : `Confianza: ${state.confidence}%`;
-  $("frames-status").textContent = state.handDetected ? `Landmarks activos · ${state.framesCollected || 0}/20 frames` : "⚠ Mano no detectada";
+  $("detected-confidence").textContent = state.handDetected ? (state.prediction ? "Reconociendo tu seña…" : "Analizando tu seña…") : "Esperando una mano";
+  $("frames-status").textContent = state.handDetected ? `Mano detectada · ${state.framesCollected || 0}/5 predicciones` : "⚠ Mano no detectada";
   const debug = $("debug-status");
-  if (state.debug) { debug.classList.remove("hidden"); debug.textContent = `${state.debug.endpoint} · ${state.debug.inferenceMs} ms · ${state.debug.landmarks} landmarks`; }
+  const panel = $("debug-panel");
+  if (state.debug) {
+    debug.classList.remove("hidden"); debug.textContent = `${state.debug.endpoint} · ${state.debug.metrics.totalMs} ms`;
+    panel.classList.remove("hidden"); const m = state.debug.metrics;
+    panel.innerHTML = `<b>DEBUG RECONOCIMIENTO</b><span>MANO: ${state.debug.handDetected ? "detectada ✓" : "no detectada"}</span><span>FPS cámara: ${state.clientCameraFps || 0} · reconocimiento: ${state.debug.recognitionFps || 0}</span><span>Instantánea: ${state.debug.prediction || "—"} ${state.debug.confidence ?? ""}%</span><span>Estable: ${state.debug.stablePrediction || "—"} ${state.debug.stableConfidence ?? ""}%</span><span>Frames estables: ${state.debug.framesStable}/${state.debug.framesRequired}</span><span>JPEG: ${m.decodeMs} ms · MediaPipe: ${m.mediapipeMs} ms · Normalización: ${m.normalizationMs} ms</span><span>Clasificación: ${m.classificationMs} ms · Total: ${m.totalMs} ms</span><span>Modelo: cargado ✓</span>`;
+  } else { debug.classList.add("hidden"); panel.classList.add("hidden"); }
   const image = $("reference-image"), placeholder = $("reference-placeholder");
   if (image.dataset.letter !== state.target) { image.dataset.letter = state.target; image.src = `/static/assets/signs/${encodeURIComponent(state.target)}.png`; image.classList.remove("missing"); placeholder.classList.add("hidden"); image.onerror = () => { image.classList.add("missing"); placeholder.classList.remove("hidden"); }; }
   const feedback = $("feedback"), title = $("feedback-title"), text = $("feedback-text"); feedback.className = `feedback ${state.result}`;
+  const celebration = $("celebration"), next = $("next");
+  const isCorrect = state.result === "correct";
+  celebration.classList.toggle("hidden", !isCorrect);
+  if (isCorrect) {
+    $("celebration-letter").textContent = state.target;
+    $("celebration-points").textContent = `+${state.awardedPoints} estrellas`;
+  }
+  next.classList.toggle("hidden", !isCorrect);
+  next.innerHTML = state.currentRound === state.totalRounds ? "VER MIS RESULTADOS <span>★</span>" : "SIGUIENTE <span>→</span>";
   const copy = {
-    waiting:["🟡 ANALIZANDO", `Mantén la mano estable (${state.framesCollected || 0}/20).`],
+    waiting:["🟡 ANALIZANDO", `Mantén la mano estable (${state.framesCollected || 0}/5).`],
     no_hand:["⚠ MANO NO DETECTADA", "Coloca una mano completa frente a la cámara."],
     analyzing:["🟡 ANALIZANDO", "Estamos comprobando la seña…"],
     correct:["✓ ¡CORRECTO!", `+${state.awardedPoints} XP · ¡Muy bien!`],

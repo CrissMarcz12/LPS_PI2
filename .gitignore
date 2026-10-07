@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+
+# Las capturas nuevas de cámara son datos locales de entrenamiento.
+datasets/*/*.npz
+!datasets/.gitkeep

@@ -8,6 +8,7 @@ import webbrowser
 from flask import Flask, jsonify, render_template, request
 from config import MODELS_DIR, SEQUENCE_LENGTH
 from game.controller import GameController
+from training.controller import TrainingController
 
 def open_browser(url: str) -> None:
     candidates = [Path(os.environ.get(name, "")) / "Google/Chrome/Application/chrome.exe" for name in ("PROGRAMFILES", "PROGRAMFILES(X86)")]
@@ -20,7 +21,9 @@ def open_browser(url: str) -> None:
 def create_app() -> Flask:
     app = Flask(__name__)
     controller = GameController(MODELS_DIR, SEQUENCE_LENGTH)
+    training = TrainingController()
     app.extensions["rimaymaki_controller"] = controller
+    app.extensions["rimaymaki_training"] = training
 
     @app.get("/")
     def home():
@@ -30,6 +33,10 @@ def create_app() -> Flask:
     def game():
         controller.start()
         return render_template("game.html")
+
+    @app.get("/training")
+    def training_page():
+        return render_template("training.html")
 
     @app.get("/api/session")
     def session():
@@ -49,6 +56,44 @@ def create_app() -> Flask:
     @app.post("/api/next")
     def next_round():
         return jsonify(controller.next_round())
+
+    @app.get("/api/training")
+    def training_overview():
+        return jsonify(training.overview())
+
+    @app.post("/api/training/configure")
+    def training_configure():
+        data = request.get_json(silent=True) or {}
+        try:
+            return jsonify(training.configure(str(data.get("label", "")), bool(data.get("capturing", False))))
+        except ValueError as exc:
+            return jsonify({"success": False, "message": str(exc)}), 400
+
+    @app.post("/api/training/frame")
+    def training_frame():
+        upload = request.files.get("frame")
+        if upload is None or not upload.filename:
+            return jsonify({"success": False, "message": "No se recibió una imagen de cámara."}), 400
+        try:
+            return jsonify({"success": True, **training.submit_frame(upload.read())})
+        except (RuntimeError, ValueError) as exc:
+            return jsonify({"success": False, "message": str(exc)}), 400
+
+    @app.post("/api/training/train")
+    def training_train():
+        data = request.get_json(silent=True) or {}
+        try:
+            return jsonify(training.train(str(data.get("label", ""))))
+        except ValueError as exc:
+            return jsonify({"success": False, "message": str(exc)}), 400
+
+    @app.post("/api/training/clear")
+    def training_clear():
+        data = request.get_json(silent=True) or {}
+        try:
+            return jsonify(training.clear(str(data.get("label", ""))))
+        except ValueError as exc:
+            return jsonify({"success": False, "message": str(exc)}), 400
 
     return app
 

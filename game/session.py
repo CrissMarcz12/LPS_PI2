@@ -24,6 +24,8 @@ class SessionState:
     landmarks: list[dict[str, float]] | None = None
     frames_collected: int = 0
     prediction_stable: bool = False
+    stable_prediction: str | None = None
+    stable_confidence: float | None = None
 
     def __post_init__(self) -> None:
         if self.available_letters:
@@ -39,6 +41,8 @@ class SessionState:
         if prediction.confidence <= 0:
             self.prediction = None
             self.confidence = None
+            self.stable_prediction = None
+            self.stable_confidence = None
             self.result = "no_hand"
             return
         self.confidence = prediction.confidence
@@ -46,11 +50,15 @@ class SessionState:
             self.prediction = None
             self.result = "analyzing"
             return
-        if not prediction.stable or prediction.letter is None:
+        # La letra se muestra en vivo, pero no resuelve la ronda hasta que la
+        # ventana temporal del clasificador la confirme.
+        self.prediction = prediction.letter
+        confirmed = prediction.stable_letter or prediction.letter
+        if not prediction.stable or confirmed is None:
             self.result = "analyzing"
             return
-        self.prediction = prediction.letter
-        if prediction.letter == self.target:
+        self.prediction = confirmed
+        if confirmed == self.target:
             self.current_streak += 1
             self.max_streak = max(self.max_streak, self.current_streak)
             self.awarded_points = points_for_correct(self.current_streak)
@@ -75,6 +83,8 @@ class SessionState:
         self.current_round += 1
         self.prediction = None
         self.confidence = None
+        self.stable_prediction = None
+        self.stable_confidence = None
         self.result = "waiting"
         self.awarded_points = 0
         self.target = None if self.completed else random.choice(self.available_letters)
@@ -84,6 +94,8 @@ class SessionState:
         self.landmarks = landmarks
         self.frames_collected = frames_collected
         self.prediction_stable = prediction.stable
+        self.stable_prediction = prediction.stable_letter
+        self.stable_confidence = prediction.stable_confidence
 
     def payload(self) -> dict:
         attempts = self.correct_answers + self.wrong_answers
@@ -97,4 +109,6 @@ class SessionState:
             "accuracy": round(self.correct_answers / attempts * 100) if attempts else 0,
             "handDetected": self.hand_detected, "landmarks": self.landmarks or [],
             "framesCollected": self.frames_collected, "predictionStable": self.prediction_stable,
+            "stablePrediction": self.stable_prediction,
+            "stableConfidence": round(self.stable_confidence * 100, 1) if self.stable_confidence is not None else None,
         }

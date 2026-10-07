@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import Counter, deque
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Iterable
 import json
 import joblib
 import numpy as np
@@ -15,6 +16,8 @@ class Prediction:
     letter: str | None
     confidence: float
     stable: bool
+    stable_letter: str | None = None
+    stable_confidence: float | None = None
 
 class LetterModel:
     """Modelo de una clase basado en su postura media y variación real."""
@@ -38,7 +41,7 @@ def _safe_label(label: str) -> str:
 def save_letter_model(label: str, samples: np.ndarray, model_root: Path, sequence_length: int) -> Path:
     label = _safe_label(label); model = LetterModel().fit(samples); destination = model_root / label
     destination.mkdir(parents=True, exist_ok=True); joblib.dump(model, destination / MODEL_FILENAME)
-    (destination / METADATA_FILENAME).write_text(json.dumps({"label": label, "sample_count": int(len(samples)), "sequence_length": sequence_length}, indent=2), encoding="utf-8")
+    (destination / METADATA_FILENAME).write_text(json.dumps({"label": label, "sample_count": int(len(samples)), "sequence_length": sequence_length, "feature_size": int(samples.shape[1]), "pipeline": "static-frame-v2"}, indent=2), encoding="utf-8")
     return destination / MODEL_FILENAME
 
 def available_models(model_root: Path, sequence_length: int) -> dict[str, LetterModel]:
@@ -49,24 +52,40 @@ def available_models(model_root: Path, sequence_length: int) -> dict[str, Letter
         if not directory.is_dir(): continue
         try:
             metadata = json.loads((directory / METADATA_FILENAME).read_text(encoding="utf-8")); label = _safe_label(str(metadata["label"]))
-            if label != directory.name or metadata.get("sequence_length") != sequence_length or not isinstance(metadata.get("sample_count"), int) or metadata["sample_count"] < 1: continue
+            if label != directory.name or metadata.get("pipeline") != "static-frame-v2" or metadata.get("feature_size") != 63 or not isinstance(metadata.get("sample_count"), int) or metadata["sample_count"] < 1: continue
             model = joblib.load(directory / MODEL_FILENAME)
-            if (not isinstance(model, LetterModel) or not all(hasattr(model, key) for key in ("center_", "scale_", "limit_")) or model.center_.size != sequence_length * 63 or model.scale_.size != sequence_length * 63 or not isinstance(model.limit_, (int, float, np.floating))): continue
+            if (not isinstance(model, LetterModel) or not all(hasattr(model, key) for key in ("center_", "scale_", "limit_")) or model.center_.size != 63 or model.scale_.size != 63 or not isinstance(model.limit_, (int, float, np.floating))): continue
             found[label] = model
         except Exception: continue
     return dict(sorted(found.items()))
 
 class AvailableLettersClassifier:
-    def __init__(self, models: dict[str, LetterModel], min_confidence: float, stable_frames: int) -> None:
+    def __init__(self, models: dict[str, LetterModel], min_confidence: float, stable_frames: int, stable_frames_required: int = 4) -> None:
         self.models, self.min_confidence, self.stable_frames = models, min_confidence, stable_frames
-        self.history: deque[str | None] = deque(maxlen=stable_frames)
+        self.stable_frames_required = stable_frames_required
+        self.history: deque[tuple[str | None, float]] = deque(maxlen=stable_frames)
     def reset(self) -> None: self.history.clear()
     def predict(self, features: np.ndarray) -> Prediction:
         if not self.models:
             return Prediction(None, 0.0, False)
         scores = {label: float(model.score(features.reshape(1, -1))[0]) for label, model in self.models.items()}
-        label, confidence = max(scores.items(), key=lambda item: item[1]); self.history.append(label if confidence >= self.min_confidence else None)
-        winner, count = Counter(self.history).most_common(1)[0]
-        required = max(3, (self.stable_frames + 1) // 2)
+        label, confidence = max(scores.items(), key=lambda item: item[1])
+        accepted = label if confidence >= self.min_confidence else None
+        self.history.append((accepted, confidence))
+        labels = [item[0] for item in self.history]
+        winner, count = Counter(labels).most_common(1)[0]
+        required = min(self.stable_frames, self.stable_frames_required)
         stable = winner is not None and count >= required
-        return Prediction(winner if stable else None, confidence, stable)
+        stable_scores = [score for candidate, score in self.history if candidate == winner]
+        stable_confidence = float(np.mean(stable_scores)) if stable_scores else None
+        return Prediction(accepted, confidence, stable, str(winner) if stable else None, stable_confidence if stable else None)
+
+    @property
+    def frames_seen(self) -> int:
+        return len(self.history)
+
+    @property
+    def dominant_vote_count(self) -> int:
+        if not self.history:
+            return 0
+        return Counter(item[0] for item in self.history).most_common(1)[0][1]

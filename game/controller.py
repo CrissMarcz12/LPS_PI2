@@ -1,7 +1,9 @@
 """Coordina una sesión activa sin mezclar reglas de juego con rutas Flask."""
 from __future__ import annotations
 import threading
-from config import CONFIDENCE_THRESHOLD, DEBUG_MODE, PREDICTION_HISTORY_SIZE, TOTAL_ROUNDS
+from config import (CONFIDENCE_THRESHOLD, DEBUG_MODE, DRAW_LANDMARKS,
+                    PREDICTION_HISTORY_SIZE, RECOGNITION_FPS,
+                    STABLE_FRAMES_REQUIRED, TOTAL_ROUNDS)
 from recognition.classifier import AvailableLettersClassifier, available_models
 from recognition.service import StaticHandRecognizer
 from .session import SessionState
@@ -22,7 +24,7 @@ class GameController:
             self.recognizer = None
             if models:
                 try:
-                    self.recognizer = StaticHandRecognizer(AvailableLettersClassifier(models, CONFIDENCE_THRESHOLD, PREDICTION_HISTORY_SIZE))
+                    self.recognizer = StaticHandRecognizer(AvailableLettersClassifier(models, CONFIDENCE_THRESHOLD, PREDICTION_HISTORY_SIZE, STABLE_FRAMES_REQUIRED))
                 except Exception:
                     self.error = "No se pudo iniciar el reconocimiento de cámara."
             return self.payload()
@@ -64,7 +66,9 @@ class GameController:
         data = self.state.payload()
         data["message"] = self.error
         data["success"] = self.error is None
+        data["showLandmarks"] = DRAW_LANDMARKS
+        data["recognitionIntervalMs"] = int(1000 / RECOGNITION_FPS)
         data["inferenceMs"] = round(self.recognizer.last_inference_ms, 1) if self.recognizer else None
         if DEBUG_MODE:
-            data["debug"] = {"prediction": data.get("prediction"), "confidence": data.get("confidence"), "handDetected": data.get("handDetected"), "landmarks": len(data.get("landmarks", [])), "inferenceMs": data.get("inferenceMs"), "endpoint": "/api/frame"}
+            data["debug"] = {"prediction": data.get("prediction"), "confidence": data.get("confidence"), "stablePrediction": data.get("stablePrediction"), "stableConfidence": data.get("stableConfidence"), "handDetected": data.get("handDetected"), "landmarks": len(data.get("landmarks", [])), "framesStable": self.recognizer.stable_votes if self.recognizer else 0, "framesRequired": STABLE_FRAMES_REQUIRED, "recognitionFps": self.recognizer.recognition_fps if self.recognizer else 0.0, "metrics": self.recognizer.last_metrics if self.recognizer else {}, "endpoint": "/api/frame"}
         return data

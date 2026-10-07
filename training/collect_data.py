@@ -6,16 +6,15 @@ from pathlib import Path
 from uuid import uuid4
 import sys
 import cv2
-import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from config import CAMERA_INDEX, DATASETS_DIR, MAX_HANDS, SEQUENCE_LENGTH
 from features.landmarks import LandmarkSequence, normalized_hand_vector
 from runtime.mediapipe_loader import load_mediapipe_solutions
+from training.storage import normalize_label, save_sample
 
 def label_name(value: str) -> str:
-    value = value.strip().upper()
-    if not value or not value.isalpha() or len(value) != 1: raise argparse.ArgumentTypeError("Usa una única letra.")
-    return value
+    try: return normalize_label(value)
+    except ValueError as exc: raise argparse.ArgumentTypeError(str(exc)) from exc
 def main() -> None:
     parser = argparse.ArgumentParser(description="Captura datos reales para una letra.")
     parser.add_argument("letter", type=label_name); args = parser.parse_args()
@@ -38,7 +37,6 @@ def main() -> None:
             if key == 27: break
             if key == ord("r"): sequence.clear()
             if key == ord(" ") and sequence.ready:
-                file = target / f"{datetime.now():%Y%m%d_%H%M%S}_{uuid4().hex}.npz"
-                np.savez_compressed(file, features=sequence.flattened()); saved += 1; print(f"Muestra guardada: {file}")
+                file = save_sample(args.letter, sequence.flattened()); saved += 1; print(f"Muestra guardada: {file}")
     camera.release(); cv2.destroyAllWindows()
 if __name__ == "__main__": main()
