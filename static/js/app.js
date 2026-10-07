@@ -18,5 +18,7 @@ async function startRecognition() {
 async function safely(action) { try { return await action(); } catch (error) { console.error(error); cameraReady(false, "No pudimos conectar con el reconocimiento."); return null; } }
 document.querySelector("#next").addEventListener("click", async () => { camera?.stop(); const state = await safely(nextRound); if (state?.result !== "completed") await safely(startRecognition); else if (state) apply(state); });
 document.querySelector("#retry").addEventListener("click", async () => { const state = await safely(retryRound); if (state) { apply(state); await safely(startRecognition); } });
-document.querySelector("#fullscreen").addEventListener("click", async () => { const stage = document.querySelector("#camera-stage"); try { if (document.fullscreenElement) await document.exitFullscreen(); else await stage.requestFullscreen(); } catch (error) { console.warn("No se pudo activar pantalla completa", error); } });
+const fullscreen = document.querySelector("#fullscreen");
+fullscreen.addEventListener("click", async () => { const stage = document.querySelector("#camera-stage"); try { if (document.fullscreenElement) await document.exitFullscreen(); else if (stage.requestFullscreen) await stage.requestFullscreen(); else stage.webkitRequestFullscreen?.(); } catch (error) { console.warn("No se pudo activar pantalla completa", error); } });
+document.addEventListener("fullscreenchange", () => { const active = Boolean(document.fullscreenElement); fullscreen.textContent = active ? "×" : "⛶"; fullscreen.setAttribute("aria-label", active ? "Salir de pantalla completa" : "Activar pantalla completa"); });
 safely(startRecognition);
