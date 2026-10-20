@@ -48,7 +48,8 @@ export class LocalHandCamera {
   constructor(video, landmarkCanvas, onFrame, onError, sender, intervalMs = 100) {
     this.video = video; this.landmarkCanvas = landmarkCanvas; this.onFrame = onFrame;
     this.onError = onError; this.sender = sender; this.intervalMs = intervalMs;
-    this.running = false; this.busy = false; this.lastSent = 0; this.lastNoHandSent = 0; this.correctionHint = "";
+    this.running = false; this.inFlight = 0; this.maxInFlight = 2; this.lastSent = 0; this.lastNoHandSent = 0;
+    this.requestId = 0; this.lastRenderedRequest = 0; this.correctionHint = "";
   }
   async start() {
     try {
@@ -68,11 +69,28 @@ export class LocalHandCamera {
     // la clasificación mantenga exactamente el mismo sistema usado al entrenar.
     const points = raw.map(point => ({x:1-point.x, y:point.y, z:point.z}));
     this.drawLandmarks(points, this.correctionHint); const now = performance.now();
-    if (!this.busy && now - this.lastSent >= this.intervalMs) this.send(points, now);
+    // No esperamos toda una ida y vuelta a Render para capturar la siguiente
+    // lectura. Dos solicitudes pequeñas en vuelo eliminan la sensación de
+    // retraso de una conexión remota sin saturar el servidor gratuito.
+    if (this.inFlight < this.maxInFlight && now - this.lastSent >= this.intervalMs) this.send(points, now);
   }
-  sendNoHand() { const now=performance.now(); if (!this.busy && now-this.lastNoHandSent>=500) { this.lastNoHandSent=now; this.sendPayload({handDetected:false,features:[],landmarks:[]}); } }
+  sendNoHand() { const now=performance.now(); if (this.inFlight < this.maxInFlight && now-this.lastNoHandSent>=350) { this.lastNoHandSent=now; this.sendPayload({handDetected:false,features:[],landmarks:[]}); } }
   send(points, now) { this.lastSent=now; const features=normalizedVector(points); this.sendPayload({handDetected:true,features,landmarks:points.map(({x,y})=>({x,y}))}); }
-  async sendPayload(payload) { this.busy=true; try { this.onFrame(await this.sender(payload)); } catch (error) { console.error("Error al enviar landmarks", error); this.onError(error); } finally { this.busy=false; } }
+  async sendPayload(payload) {
+    const requestId = ++this.requestId;
+    this.inFlight += 1;
+    try {
+      const state = await this.sender(payload);
+      // Las respuestas de red pueden llegar desordenadas. Se ignoran estados
+      // viejos, salvo los resultados finales que jamás deben desaparecer.
+      const finalState = ["correct", "incorrect", "completed"].includes(state.result);
+      if (finalState || requestId >= this.lastRenderedRequest) {
+        this.lastRenderedRequest = Math.max(this.lastRenderedRequest, requestId);
+        this.onFrame(state);
+      }
+    } catch (error) { console.error("Error al enviar landmarks", error); this.onError(error); }
+    finally { this.inFlight = Math.max(0, this.inFlight - 1); }
+  }
   setCorrectionHint(hint = "") { this.correctionHint = hint; }
   drawLandmarks(points = [], correctionHint = "") {
     const canvas=this.landmarkCanvas, width=this.video.videoWidth, height=this.video.videoHeight;
