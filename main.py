@@ -67,6 +67,18 @@ def create_app() -> Flask:
             return jsonify({"message": "No se recibió una imagen de cámara."}), 400
         return jsonify(controller().submit_frame(upload.read()))
 
+    @app.post("/api/landmarks")
+    def landmarks():
+        data = request.get_json(silent=True) or {}
+        try:
+            features = data.get("features", [])
+            points = data.get("landmarks", [])
+            if not isinstance(features, list) or not isinstance(points, list):
+                raise ValueError("Los datos de la mano no son válidos.")
+            return jsonify(controller().submit_landmarks(features, points, bool(data.get("handDetected", False))))
+        except ValueError as exc:
+            return jsonify({"message": str(exc)}), 400
+
     @app.post("/api/retry")
     def retry():
         return jsonify(controller().retry())

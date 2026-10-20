@@ -42,3 +42,53 @@ export class BrowserCamera {
   }
   stop() { clearInterval(this.timer); this.timer = null; this.stream?.getTracks().forEach(track => track.stop()); this.stream = null; this.sentAt = []; this.drawLandmarks([]); }
 }
+
+/** Detecta la mano en la propia tableta y envía al servidor solo 63 números. */
+export class LocalHandCamera {
+  constructor(video, landmarkCanvas, onFrame, onError, sender, intervalMs = 100) {
+    this.video = video; this.landmarkCanvas = landmarkCanvas; this.onFrame = onFrame;
+    this.onError = onError; this.sender = sender; this.intervalMs = intervalMs;
+    this.running = false; this.busy = false; this.lastSent = 0; this.lastNoHandSent = 0; this.correctionHint = "";
+  }
+  async start() {
+    try {
+      if (!window.Hands) throw new Error("No se cargó el detector local de manos.");
+      this.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30, max: 30 } }, audio: false });
+      this.video.srcObject = this.stream; await this.video.play();
+      this.hands = new window.Hands({ locateFile: file => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}` });
+      this.hands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: .55, minTrackingConfidence: .55 });
+      this.hands.onResults(result => this.onResults(result)); this.running = true; this.process(); return true;
+    } catch (error) { console.error("No se pudo iniciar el detector local", error); this.onError(error); return false; }
+  }
+  async process() { if (!this.running) return; try { await this.hands.send({image:this.video}); } catch (error) { this.onError(error); } if (this.running) requestAnimationFrame(() => this.process()); }
+  onResults(result) {
+    const raw = result.multiHandLandmarks?.[0];
+    if (!raw) { this.drawLandmarks([]); this.sendNoHand(); return; }
+    // La vista de cámara está espejada: se espejan también los puntos para que
+    // la clasificación mantenga exactamente el mismo sistema usado al entrenar.
+    const points = raw.map(point => ({x:1-point.x, y:point.y, z:point.z}));
+    this.drawLandmarks(points, this.correctionHint); const now = performance.now();
+    if (!this.busy && now - this.lastSent >= this.intervalMs) this.send(points, now);
+  }
+  sendNoHand() { const now=performance.now(); if (!this.busy && now-this.lastNoHandSent>=500) { this.lastNoHandSent=now; this.sendPayload({handDetected:false,features:[],landmarks:[]}); } }
+  send(points, now) { this.lastSent=now; const features=normalizedVector(points); this.sendPayload({handDetected:true,features,landmarks:points.map(({x,y})=>({x,y}))}); }
+  async sendPayload(payload) { this.busy=true; try { this.onFrame(await this.sender(payload)); } catch (error) { console.error("Error al enviar landmarks", error); this.onError(error); } finally { this.busy=false; } }
+  setCorrectionHint(hint = "") { this.correctionHint = hint; }
+  drawLandmarks(points = [], correctionHint = "") {
+    const canvas=this.landmarkCanvas, width=this.video.videoWidth, height=this.video.videoHeight;
+    if (!width || !height) return; canvas.width=width; canvas.height=height;
+    const context=canvas.getContext("2d"); context.clearRect(0,0,width,height); if (!points.length) return;
+    const fingers={pulgar:[1,2,3,4],"índice":[5,6,7,8],"dedo medio":[9,10,11,12],"dedo anular":[13,14,15,16],"meñique":[17,18,19,20]};
+    const highlighted=Object.entries(fingers).filter(([name])=>correctionHint.includes(name)).flatMap(([,indexes])=>indexes);
+    context.lineWidth=Math.max(2,width/360); context.shadowColor="#24346d"; context.shadowBlur=4;
+    for(const [from,to] of CONNECTIONS){context.strokeStyle=highlighted.includes(from)&&highlighted.includes(to)?"#ff3f5e":"#ffffff";context.beginPath();context.moveTo(points[from].x*width,points[from].y*height);context.lineTo(points[to].x*width,points[to].y*height);context.stroke();}
+    for(const [index,point] of points.entries()){context.fillStyle=highlighted.includes(index)?"#ff3f5e":"#ffdc5d";context.beginPath();context.arc(point.x*width,point.y*height,Math.max(3,width/180),0,Math.PI*2);context.fill();} context.shadowBlur=0;
+  }
+  stop() { this.running=false; this.hands?.close?.(); this.hands=null; this.stream?.getTracks().forEach(track=>track.stop()); this.stream=null; this.drawLandmarks([]); }
+}
+
+function normalizedVector(points) {
+  const wrist=points[0], shifted=points.map(point=>[point.x-wrist.x,point.y-wrist.y,(point.z||0)-wrist.z]);
+  let scale=Math.hypot(shifted[9][0],shifted[9][1]); if (scale<1e-6) scale=1;
+  return shifted.flatMap(point=>point.map(value=>value/scale));
+}

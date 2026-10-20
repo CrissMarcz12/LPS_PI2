@@ -1,10 +1,11 @@
 """Coordina una sesión activa sin mezclar reglas de juego con rutas Flask."""
 from __future__ import annotations
 import threading
+import numpy as np
 from config import (CONFIDENCE_THRESHOLD, DEBUG_MODE, DRAW_LANDMARKS, LOW_CONFIDENCE_FRAMES_REQUIRED,
                     PREDICTION_HISTORY_SIZE, RECOGNITION_FPS,
                     STABLE_FRAMES_REQUIRED, TOTAL_ROUNDS)
-from recognition.classifier import AvailableLettersClassifier, available_models
+from recognition.classifier import AvailableLettersClassifier, Prediction, available_models
 from recognition.service import StaticHandRecognizer
 from .session import SessionState
 
@@ -13,6 +14,7 @@ class GameController:
         self.model_root, self.sequence_length = model_root, sequence_length
         self.state: SessionState | None = None
         self.recognizer: StaticHandRecognizer | None = None
+        self.classifier: AvailableLettersClassifier | None = None
         self.error: str | None = None
         self._lock = threading.Lock()
 
@@ -22,18 +24,24 @@ class GameController:
             self.state = SessionState(tuple(models), TOTAL_ROUNDS)
             self.error = None
             self.recognizer = None
+            self.classifier = None
             if models:
                 try:
-                    self.recognizer = StaticHandRecognizer(AvailableLettersClassifier(models, CONFIDENCE_THRESHOLD, PREDICTION_HISTORY_SIZE, STABLE_FRAMES_REQUIRED))
+                    # El juego normal usa MediaPipe en la tableta y solo recibe
+                    # landmarks; así evitamos enviar JPEGs pesados al servidor.
+                    self.classifier = AvailableLettersClassifier(models, CONFIDENCE_THRESHOLD, PREDICTION_HISTORY_SIZE, STABLE_FRAMES_REQUIRED)
                 except Exception:
                     self.error = "No se pudo iniciar el reconocimiento de cámara."
             return self.payload()
 
     def submit_frame(self, image_bytes: bytes) -> dict:
         with self._lock:
-            if not self.state or not self.recognizer:
+            if not self.state or not self.classifier:
                 return self.payload()
             try:
+                # Ruta de respaldo para navegadores sin MediaPipe Web.
+                if self.recognizer is None:
+                    self.recognizer = StaticHandRecognizer(self.classifier)
                 prediction = self.recognizer.recognize(image_bytes)
                 self.state.observe(
                     hand_detected=self.recognizer.last_hand_detected,
@@ -47,10 +55,35 @@ class GameController:
                 self.error = "No pudimos analizar la imagen de cámara."
             return self.payload()
 
+    def submit_landmarks(self, features: list[float], landmarks: list[dict[str, float]], hand_detected: bool) -> dict:
+        """Clasifica landmarks ya detectados en el navegador, sin JPEG ni MediaPipe servidor."""
+        with self._lock:
+            if not self.state or not self.classifier:
+                return self.payload()
+            try:
+                if not hand_detected:
+                    self.classifier.reset()
+                    prediction = Prediction(None, 0.0, False)
+                    self.state.observe(hand_detected=False, landmarks=[], frames_collected=0, prediction=prediction)
+                    self.state.evaluate(prediction, CONFIDENCE_THRESHOLD)
+                else:
+                    vector = np.asarray(features, dtype=np.float32).reshape(-1)
+                    if vector.size != 63 or not np.isfinite(vector).all() or len(landmarks) != 21:
+                        raise ValueError("Los landmarks recibidos no son válidos.")
+                    prediction = self.classifier.predict(vector)
+                    self.state.observe(hand_detected=True, landmarks=landmarks,
+                                       frames_collected=self.classifier.frames_seen, prediction=prediction)
+                    error_hint = self.classifier.guidance_for(self.state.target, vector)
+                    self.state.evaluate(prediction, CONFIDENCE_THRESHOLD, error_hint, LOW_CONFIDENCE_FRAMES_REQUIRED)
+            except (TypeError, ValueError, RuntimeError):
+                self.error = "No pudimos analizar la posición de la mano."
+            return self.payload()
+
     def retry(self) -> dict:
         with self._lock:
             if self.state:
                 self.state.retry()
+                self.classifier.reset() if self.classifier else None
                 self.recognizer.reset() if self.recognizer else None
             return self.payload()
 
@@ -58,6 +91,7 @@ class GameController:
         with self._lock:
             if self.state:
                 self.state.next_round()
+                self.classifier.reset() if self.classifier else None
                 self.recognizer.reset() if self.recognizer else None
             return self.payload()
 

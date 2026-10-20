@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>RimayMaki | Actividad</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tablet-game.css') }}">
 </head>
 <body class="game-page">
   <header class="topbar">
@@ -33,6 +34,7 @@
     </section>
     <section id="results-state" class="results-card hidden"><span class="empty-icon">★</span><p class="eyebrow">SESIÓN COMPLETADA</p><h1>Terminaste tu práctica</h1><div class="final-score"><strong id="final-score">0</strong><span>XP</span></div><div class="results-grid"><p>✓ <b id="final-correct">0</b> aciertos</p><p>✕ <b id="final-wrong">0</b> errores</p><p>🔥 racha máxima: <b id="final-streak">0</b></p><p>Precisión: <b id="final-accuracy">0%</b></p></div><a class="button primary" href="/game">JUGAR DE NUEVO</a></section>
   </main>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
   <script type="module" src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 </html>

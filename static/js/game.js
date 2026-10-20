@@ -7,3 +7,4 @@ export const getSession = () => api("/api/session");
 export const nextRound = () => api("/api/next", { method: "POST" });
 export const retryRound = () => api("/api/retry", { method: "POST" });
 export function sendFrame(blob) { const form = new FormData(); form.append("frame", blob, "camera.jpg"); return api("/api/frame", { method: "POST", body: form }); }
+export function sendLandmarks(payload) { return api("/api/landmarks", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(payload) }); }

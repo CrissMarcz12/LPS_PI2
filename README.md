@@ -21,6 +21,12 @@ En el panel escribe una etiqueta propia: `M`, `1`, `HOLA` o `NÚMERO 1`. Luego:
 
 La misma etiqueta, modelo e imagen aparecen automáticamente en el juego. Las capturas guardan landmarks, no fotos de la cámara. Las etiquetas aceptan hasta 32 caracteres: letras, números, espacios, guiones y guion bajo.
 
+## Tableta y botones físicos
+
+`/game` abre directamente en modo quiosco: solo se ve la cámara, la seña de referencia y los puntos dentro de ella. La detección de la mano ocurre en la tableta con MediaPipe Web; al servidor se envían únicamente 63 valores de landmarks, no fotos, para mantener el vídeo y los puntos suaves.
+
+Un Arduino configurado como teclado USB puede controlar el juego: `P`, Espacio o Enter activa pantalla completa; `N` o flecha derecha pasa a la siguiente seña; `R` o flecha izquierda reintenta. Los navegadores no permiten activar pantalla completa automáticamente al cargar una página: el primer botón físico debe enviar una de esas teclas, que cuenta como interacción del usuario.
+
 ## Publicar en Render para trabajo en equipo
 
 El repositorio incluye `render.yaml`. En Render crea un **Blueprint** desde este repositorio y el archivo configurará el servidor, `SECRET_KEY` y un disco persistente en `/var/data`.
