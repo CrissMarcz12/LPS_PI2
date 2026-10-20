@@ -3,14 +3,15 @@ import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-# En Render esta variable debe apuntar al disco persistente (/var/data).
-# Localmente se conserva todo dentro de data/ para no mezclarlo con el código.
+# En producción puede apuntar a un volumen. En el plan gratuito los datos
+# publicados se siembran desde GitHub y los cambios nuevos se entrenan localmente.
 PERSISTENT_DATA_DIR = Path(os.environ.get("RIMAYMAKI_DATA_DIR", ROOT / "data"))
 DATASETS_DIR = PERSISTENT_DATA_DIR / "datasets"
 MODELS_DIR = PERSISTENT_DATA_DIR / "models"
 REFERENCE_IMAGES_DIR = PERSISTENT_DATA_DIR / "references"
 SEED_MODELS_DIR = ROOT / "models"
 SEED_REFERENCE_IMAGES_DIR = ROOT / "static" / "assets" / "signs"
+SEED_DATASETS_DIR = ROOT / "datasets"
 
 CAMERA_INDEX = 0
 MAX_HANDS = 1

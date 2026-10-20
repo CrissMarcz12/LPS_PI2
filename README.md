@@ -27,13 +27,27 @@ La misma etiqueta, modelo e imagen aparecen automáticamente en el juego. Las ca
 
 Un Arduino configurado como teclado USB puede controlar el juego: `P`, Espacio o Enter activa pantalla completa; `N` o flecha derecha pasa a la siguiente seña; `R` o flecha izquierda reintenta. Los navegadores no permiten activar pantalla completa automáticamente al cargar una página: el primer botón físico debe enviar una de esas teclas, que cuenta como interacción del usuario.
 
-## Publicar en Render para trabajo en equipo
+## Entrenamiento compartido con GitHub
 
-El repositorio incluye `render.yaml`. En Render crea un **Blueprint** desde este repositorio y el archivo configurará el servidor, `SECRET_KEY` y un disco persistente en `/var/data`.
+Cada integrante trabaja una letra diferente. Solo necesita dos comandos desde la carpeta del proyecto:
 
-El disco persistente es importante: guarda muestras, modelos e imágenes de referencia aun cuando Render reinicie o haga un despliegue. Sin disco persistente esos datos se perderían al redeploy. El servicio se inicia con un único proceso para que todos los compañeros vean el mismo conjunto de modelos.
+```powershell
+# 1. Antes de capturar: actualiza GitHub y abre RimayMaki para entrenar C.
+python training/team_sync.py entrenar C
 
-Después de publicar, comparte la ruta privada de entrenamiento solo con quienes aportarán muestras. Cada navegador tiene su propia sesión de cámara; los modelos y las referencias sí son compartidos por el equipo. Como el panel permite crear y borrar datos comunes, compártelo solo con el equipo o protégelo antes de hacerlo público.
+# 2. Cuando ya pulsó ENTRENAR MODELO y cerró el servidor con Ctrl+C:
+python training/team_sync.py publicar C
+```
+
+El primero hace `pull` automáticamente antes de abrir la cámara. El segundo vuelve a actualizar el repositorio, guarda en GitHub el modelo, las muestras de landmarks y la imagen de referencia de `C`, crea el commit y hace `push`. Para la siguiente persona sería exactamente igual con `D`. No se suben vídeos ni fotos de cámara: solo los puntos de la mano y la imagen de guía.
+
+La página para capturar y entrenar es `http://127.0.0.1:5000/api/lab/rm-7f3a/entrenar`. Es una ruta técnica para el equipo, no para los niños. No entrenen simultáneamente la misma etiqueta; para letras distintas (`C`, `D`, `HOLA`) el flujo integra sus cambios sin mezclar los modelos.
+
+## Publicar gratis en Render
+
+El archivo `render.yaml` está preparado para el plan gratuito: en Render crea un **Blueprint** desde este repositorio. Cada `push` a `main` despliega la versión actual del juego y sus letras entrenadas.
+
+El plan gratuito no tiene disco persistente, por eso el entrenamiento se hace localmente con los dos comandos anteriores y GitHub es la fuente compartida. Al iniciar Render copia las letras, modelos, muestras y referencias que ya están versionados en el repositorio. No uses el panel de entrenamiento en Render para guardar trabajo nuevo, porque Render puede reiniciarse y perder esos cambios; publícalo desde un equipo mediante `team_sync.py`.
 
 ## Parámetros
 

@@ -11,7 +11,7 @@ import numpy as np
 from PIL import Image, UnidentifiedImageError
 
 from config import (DATASETS_DIR, MODELS_DIR, REFERENCE_IMAGES_DIR,
-                    SEED_MODELS_DIR, SEED_REFERENCE_IMAGES_DIR,
+                    SEED_DATASETS_DIR, SEED_MODELS_DIR, SEED_REFERENCE_IMAGES_DIR,
                     SEQUENCE_LENGTH, VECTOR_SIZE)
 from features.labels import normalize_label
 
@@ -20,7 +20,8 @@ def initialize_storage() -> None:
     """Crea el volumen de datos y conserva los ejemplos incluidos al primer uso."""
     for directory in (DATASETS_DIR, MODELS_DIR, REFERENCE_IMAGES_DIR):
         directory.mkdir(parents=True, exist_ok=True)
-    for source_root, destination_root in ((SEED_MODELS_DIR, MODELS_DIR),
+    for source_root, destination_root in ((SEED_DATASETS_DIR, DATASETS_DIR),
+                                          (SEED_MODELS_DIR, MODELS_DIR),
                                           (SEED_REFERENCE_IMAGES_DIR, REFERENCE_IMAGES_DIR)):
         if not source_root.exists():
             continue
