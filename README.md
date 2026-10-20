@@ -25,7 +25,7 @@ La misma etiqueta, modelo e imagen aparecen automáticamente en el juego. Las ca
 
 `/game` abre directamente en modo quiosco: solo se ve la cámara, la seña de referencia y los puntos dentro de ella. La detección de la mano ocurre en la tableta con MediaPipe Web; al servidor se envían únicamente 63 valores de landmarks, no fotos, para mantener el vídeo y los puntos suaves.
 
-Un Arduino configurado como teclado USB puede controlar el juego: `P`, Espacio o Enter activa pantalla completa; `N` o flecha derecha pasa a la siguiente seña; `R` o flecha izquierda reintenta. Los navegadores no permiten activar pantalla completa automáticamente al cargar una página: el primer botón físico debe enviar una de esas teclas, que cuenta como interacción del usuario.
+Un Arduino configurado como teclado USB puede controlar el juego: `P`, Espacio o Enter alterna el modo de pantalla completa (inicio/apagado visual); `N` o flecha derecha pasa a la siguiente seña correcta; `V` o flecha arriba rota el volumen de efectos entre 70 %, 100 %, silencio y 35 %; `R` o flecha izquierda reinicia toda la actividad. Los navegadores no permiten apagar físicamente una tableta desde una web ni modificar su volumen general: esos controles actúan sobre la pantalla y los sonidos del juego. El primer botón físico cuenta como interacción del usuario para permitir la pantalla completa.
 
 ## Entrenamiento compartido con GitHub
 

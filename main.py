@@ -83,6 +83,11 @@ def create_app() -> Flask:
     def retry():
         return jsonify(controller().retry())
 
+    @app.post("/api/restart")
+    def restart_game():
+        """Reinicia toda la actividad para el botón físico de reinicio."""
+        return jsonify(controller().start())
+
     @app.post("/api/next")
     def next_round():
         return jsonify(controller().next_round())

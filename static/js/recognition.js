@@ -81,6 +81,7 @@ export class LocalHandCamera {
     this.inFlight += 1;
     try {
       const state = await this.sender(payload);
+      if (!this.running) return;
       // Las respuestas de red pueden llegar desordenadas. Se ignoran estados
       // viejos, salvo los resultados finales que jamás deben desaparecer.
       const finalState = ["correct", "incorrect", "completed"].includes(state.result);
