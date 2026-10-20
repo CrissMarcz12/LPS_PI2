@@ -109,6 +109,18 @@ def create_app() -> Flask:
         except (RuntimeError, ValueError) as exc:
             return jsonify({"success": False, "message": str(exc)}), 400
 
+    @app.post("/api/training/landmarks")
+    def training_landmarks():
+        data = request.get_json(silent=True) or {}
+        try:
+            features = data.get("features", [])
+            if not isinstance(features, list):
+                raise ValueError("Los datos de la mano no son válidos.")
+            result = training.submit_landmarks(client_id(), features, bool(data.get("handDetected", False)))
+            return jsonify({"success": True, **result})
+        except (RuntimeError, ValueError) as exc:
+            return jsonify({"success": False, "message": str(exc)}), 400
+
     @app.post("/api/training/train")
     def training_train():
         data = request.get_json(silent=True) or {}

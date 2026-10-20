@@ -64,3 +64,23 @@ class BrowserTrainingCollector:
             "prediction": prediction.letter if prediction else None,
             "confidence": round(prediction.confidence * 100, 1) if prediction and prediction.letter else None,
         }
+
+    def process_features(self, features: list[float]) -> dict:
+        """Registra el mismo vector local que utiliza el juego en la tableta."""
+        values = np.asarray(features, dtype=np.float32).reshape(-1)
+        if values.size != 63 or not np.isfinite(values).all():
+            raise ValueError("Los landmarks de la mano no son válidos.")
+        self.sequence.add(values)
+        saved = False
+        now = time.monotonic()
+        if self.capturing and self.sequence.ready and now - self._last_save >= SAMPLE_CAPTURE_INTERVAL_SECONDS:
+            save_sample(self.label, self.sequence.flattened())
+            self._last_save = now
+            saved = True
+        prediction = self.preview_classifier.predict(values) if self.preview_classifier else None
+        return {
+            "handDetected": True, "framesCollected": self.sequence.frame_count,
+            "saved": saved, "sampleCount": sample_count(self.label),
+            "prediction": prediction.letter if prediction else None,
+            "confidence": round(prediction.confidence * 100, 1) if prediction and prediction.letter else None,
+        }

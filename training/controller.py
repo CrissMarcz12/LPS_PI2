@@ -32,6 +32,17 @@ class TrainingController:
                 raise RuntimeError("Configura primero la letra de entrenamiento.")
             return collector.process(image_bytes)
 
+    def submit_landmarks(self, client_id: str, features: list[float], hand_detected: bool) -> dict:
+        with self._lock:
+            collector = self.collectors.get(client_id)
+            if collector is None:
+                raise RuntimeError("Configura primero la etiqueta de entrenamiento.")
+            if not hand_detected:
+                collector.sequence.clear()
+                return {"handDetected": False, "framesCollected": 0, "saved": False,
+                        "sampleCount": sample_count(collector.label), "prediction": None, "confidence": None}
+            return collector.process_features(features)
+
     def train(self, label: str) -> dict:
         with self._lock:
             label = normalize_label(label)

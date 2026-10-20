@@ -50,7 +50,7 @@ class GameController:
                     prediction=prediction,
                 )
                 error_hint = self.recognizer.classifier.guidance_for(self.state.target, self.recognizer.last_features)
-                self.state.evaluate(prediction, CONFIDENCE_THRESHOLD, error_hint, LOW_CONFIDENCE_FRAMES_REQUIRED)
+                self.state.evaluate(prediction, self._confidence_threshold(), error_hint, LOW_CONFIDENCE_FRAMES_REQUIRED)
             except (ValueError, RuntimeError):
                 self.error = "No pudimos analizar la imagen de cámara."
             return self.payload()
@@ -65,7 +65,7 @@ class GameController:
                     self.classifier.reset()
                     prediction = Prediction(None, 0.0, False)
                     self.state.observe(hand_detected=False, landmarks=[], frames_collected=0, prediction=prediction)
-                    self.state.evaluate(prediction, CONFIDENCE_THRESHOLD)
+                    self.state.evaluate(prediction, self._confidence_threshold())
                 else:
                     vector = np.asarray(features, dtype=np.float32).reshape(-1)
                     if vector.size != 63 or not np.isfinite(vector).all() or len(landmarks) != 21:
@@ -74,10 +74,15 @@ class GameController:
                     self.state.observe(hand_detected=True, landmarks=landmarks,
                                        frames_collected=self.classifier.frames_seen, prediction=prediction)
                     error_hint = self.classifier.guidance_for(self.state.target, vector)
-                    self.state.evaluate(prediction, CONFIDENCE_THRESHOLD, error_hint, LOW_CONFIDENCE_FRAMES_REQUIRED)
+                    self.state.evaluate(prediction, self._confidence_threshold(), error_hint, LOW_CONFIDENCE_FRAMES_REQUIRED)
             except (TypeError, ValueError, RuntimeError):
                 self.error = "No pudimos analizar la posición de la mano."
             return self.payload()
+
+    def _confidence_threshold(self) -> float:
+        # Con una sola seña no hay otra clase contra la cual confundirla. Un
+        # margen más amable evita rechazar manos correctas de distintos tamaños.
+        return 0.48 if self.classifier and len(self.classifier.models) == 1 else CONFIDENCE_THRESHOLD
 
     def retry(self) -> dict:
         with self._lock:
