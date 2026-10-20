@@ -9,7 +9,7 @@ python -m pip install -r requirements.txt
 python main.py
 ```
 
-Abre `http://127.0.0.1:5000`. El panel de entrenamiento está en `http://127.0.0.1:5000/training`.
+Abre `http://127.0.0.1:5000`. La ruta de entrenamiento se entrega únicamente al equipo responsable del modelo.
 
 ## Entrenar cualquier seña
 
@@ -33,7 +33,7 @@ El repositorio incluye `render.yaml`. En Render crea un **Blueprint** desde este
 
 El disco persistente es importante: guarda muestras, modelos e imágenes de referencia aun cuando Render reinicie o haga un despliegue. Sin disco persistente esos datos se perderían al redeploy. El servicio se inicia con un único proceso para que todos los compañeros vean el mismo conjunto de modelos.
 
-Después de publicar, cada integrante abre `https://tu-servicio.onrender.com/training` para aportar muestras. Cada navegador tiene su propia sesión de cámara; los modelos y las referencias sí son compartidos por el equipo. Como el panel permite crear y borrar datos comunes, compártelo solo con el equipo o protégelo antes de hacerlo público.
+Después de publicar, comparte la ruta privada de entrenamiento solo con quienes aportarán muestras. Cada navegador tiene su propia sesión de cámara; los modelos y las referencias sí son compartidos por el equipo. Como el panel permite crear y borrar datos comunes, compártelo solo con el equipo o protégelo antes de hacerlo público.
 
 ## Parámetros
 

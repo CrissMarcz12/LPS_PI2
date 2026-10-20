@@ -52,7 +52,7 @@ def create_app() -> Flask:
         controller().start()
         return render_template("game.html")
 
-    @app.get("/training")
+    @app.get("/api/lab/rm-7f3a/entrenar")
     def training_page():
         return render_template("training.html")
 
