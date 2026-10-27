@@ -78,11 +78,8 @@ void errorSilencioso() {
 }
 
 bool conectadoWiFi() {
-  if (WiFi.status() == WL_CONNECTED) return true;
-  WiFi.disconnect();
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  unsigned long inicio = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - inicio < 10000) delay(250);
+  // WiFi.begin se ejecuta solo en setup. Volver a llamarlo mientras STA está
+  // conectando produce "sta is connecting, cannot set config".
   return WiFi.status() == WL_CONNECTED;
 }
 
@@ -143,7 +140,9 @@ void setup() {
   pinMode(LED_VERDE, OUTPUT); pinMode(LED_ROJO, OUTPUT);
   buzzerInit();
   WiFi.mode(WIFI_STA);
-  conectadoWiFi();
+  WiFi.setAutoReconnect(true);
+  WiFi.persistent(false);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 }
 
 void loop() {
