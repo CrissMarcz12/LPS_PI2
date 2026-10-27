@@ -20,7 +20,9 @@ const int botones[4] = {25, 26, 32, 33};
 const int LED_VERDE = 27;
 const int LED_ROJO  = 13;
 const int BUZZER    = 14;
-const unsigned long COMMAND_POLL_MS = 250;
+// Render mantiene esta consulta hasta un segundo y despierta al ESP32 apenas
+// el juego genera una orden; evita la espera perceptible del sondeo clásico.
+const unsigned long COMMAND_POLL_MS = 20;
 
 bool estadoPrevio[4] = {false, false, false, false};
 bool sonidoActivo = true;
@@ -161,7 +163,7 @@ void consultarComando() {
   if (!conectadoWiFi()) return;
   WiFiClientSecure client;
   HTTPClient http;
-  String url = String(API_URL) + "/api/device/" + DEVICE_ID + "/command";
+  String url = String(API_URL) + "/api/device/" + DEVICE_ID + "/command?wait=1";
   configurarHttp(http, client, url);
   int codigo = http.GET();
   if (codigo == HTTP_CODE_OK) ejecutarComando(comandoDeJson(http.getString()));

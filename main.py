@@ -43,6 +43,7 @@ def create_app() -> Flask:
     device_commands: dict[str, deque[str]] = defaultdict(deque)
     device_last_seen: dict[str, float] = {}
     devices_lock = threading.Lock()
+    device_commands_ready = threading.Condition(devices_lock)
     training = TrainingController()
     app.extensions["rimaymaki_controllers"] = controllers
     app.extensions["rimaymaki_training"] = training
@@ -149,8 +150,9 @@ def create_app() -> Flask:
         command = str((request.get_json(silent=True) or {}).get("command", "")).upper()
         if command not in DEVICE_COMMANDS:
             return jsonify({"success": False, "message": "Comando no válido."}), 400
-        with devices_lock:
+        with device_commands_ready:
             device_commands[device_id].append(command)
+            device_commands_ready.notify_all()
         return jsonify({"success": True})
 
     @app.get("/api/device/<device_id>/command")
@@ -159,8 +161,15 @@ def create_app() -> Flask:
         valid_device_id(device_id)
         if not device_is_authorized():
             return jsonify({"success": False, "message": "Dispositivo no autorizado."}), 401
-        with devices_lock:
+        try:
+            wait_seconds = min(max(float(request.args.get("wait", "0")), 0), 2)
+        except ValueError:
+            wait_seconds = 0
+        with device_commands_ready:
             device_last_seen[device_id] = time.monotonic()
+            deadline = time.monotonic() + wait_seconds
+            while not device_commands[device_id] and time.monotonic() < deadline:
+                device_commands_ready.wait(deadline - time.monotonic())
             command = device_commands[device_id].popleft() if device_commands[device_id] else ""
         response = jsonify({"command": command})
         response.headers["Cache-Control"] = "no-store"
