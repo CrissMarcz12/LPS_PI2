@@ -1,5 +1,5 @@
 import { getSession, nextRound, restartGame, retryRound, sendLandmarks } from "./game.js";
-import { ArduinoBridge } from "./arduino.js?v=3";
+import { ArduinoBridge } from "./arduino.js?v=4";
 import { LocalHandCamera } from "./recognition.js";
 import { cameraReady, getBuzzerEnabled, render, setBuzzerEnabled, showState, toggleBuzzer } from "./ui.js?v=4";
 
@@ -12,8 +12,8 @@ function apply(state) {
   render(state); camera?.setCorrectionHint?.(state.result === "incorrect" ? state.errorHint : "");
   if (["correct", "incorrect"].includes(state.result) && state.result !== lastArduinoFeedback) {
     lastArduinoFeedback = state.result;
-    // SONIDO: NO no manda BIEN/MAL al ESP32: el buzzer no recibe señal.
-    if (getBuzzerEnabled()) arduino?.feedback(state.result);
+    // Con sonido apagado se conserva el LED, pero no se manda ningún tono.
+    arduino?.feedback(state.result, getBuzzerEnabled());
   } else if (!["correct", "incorrect"].includes(state.result)) lastArduinoFeedback = null;
   // La cámara sigue visible debajo de la celebración; solo se detiene al terminar la sesión.
   if (state.result === "completed") camera?.stop();

@@ -76,9 +76,9 @@ export class ArduinoBridge {
     catch (error) { console.warn("No se pudo enviar el resultado al ESP32.", error); }
   }
 
-  feedback(result) {
-    if (result === "correct") return this.send("BIEN");
-    if (result === "incorrect") return this.send("MAL");
+  feedback(result, withSound = true) {
+    if (result === "correct") return this.send(withSound ? "BIEN" : "LED_BIEN");
+    if (result === "incorrect") return this.send(withSound ? "MAL" : "LED_MAL");
   }
 
   setBuzzerEnabled(enabled) {

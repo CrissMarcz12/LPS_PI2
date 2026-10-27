@@ -45,6 +45,19 @@ void error() {
   digitalWrite(LED_ROJO, LOW);
 }
 
+// Avisos visuales usados cuando la aplicación tiene SONIDO: NO.
+void aciertoSilencioso() {
+  digitalWrite(LED_VERDE, HIGH);
+  delay(500);
+  digitalWrite(LED_VERDE, LOW);
+}
+
+void errorSilencioso() {
+  digitalWrite(LED_ROJO, HIGH);
+  delay(600);
+  digitalWrite(LED_ROJO, LOW);
+}
+
 void publicarSonido() {
   Serial.print("SOUND");
   Serial.println(sonidoActivo ? "1" : "0");
@@ -95,6 +108,8 @@ void loop() {
     msg.trim();
     if (msg == "BIEN") acierto();
     else if (msg == "MAL") error();
+    else if (msg == "LED_BIEN") aciertoSilencioso();
+    else if (msg == "LED_MAL") errorSilencioso();
     else if (msg == "SOUND1") {
       establecerSonido(true);
     } else if (msg == "SOUND0") {
