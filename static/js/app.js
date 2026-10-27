@@ -1,7 +1,7 @@
 import { getSession, nextRound, restartGame, retryRound, sendLandmarks } from "./game.js";
-import { ArduinoBridge } from "./arduino.js";
+import { ArduinoBridge } from "./arduino.js?v=2";
 import { LocalHandCamera } from "./recognition.js";
-import { cameraReady, cycleBuzzerVolume, getBuzzerVolume, render, showState } from "./ui.js";
+import { cameraReady, cycleBuzzerVolume, getBuzzerVolume, render, setBuzzerVolume, showState } from "./ui.js?v=3";
 
 let camera, autoRetryTimer, lastArduinoFeedback, gameActive = false;
 let arduino;
@@ -87,6 +87,7 @@ function showArduinoStatus(status) {
 }
 arduino = new ArduinoBridge({
   onButton: code => hardwareAction(buttonAction[code]),
+  onVolume: level => setBuzzerVolume(level),
   onStatus: status => {
     showArduinoStatus(status);
     if (status === "connected") arduino?.setBuzzerVolume(getBuzzerVolume());

@@ -5,7 +5,11 @@ const int LED_VERDE = 27;
 const int LED_ROJO  = 13;
 const int BUZZER    = 14;
 bool estadoPrevio[4] = {false, false, false, false};
-int volumenBuzzer = 179;  // 70 % de 255
+// El botón físico BTN3 controla el volumen aun si la tableta no está conectada.
+const int nivelesBuzzer[] = {179, 255, 0, 89}; // 70 %, 100 %, silencio, 35 %
+const int totalNiveles = sizeof(nivelesBuzzer) / sizeof(nivelesBuzzer[0]);
+int indiceVolumen = 0;
+int volumenBuzzer = nivelesBuzzer[indiceVolumen];
 
 void buzzerInit() {
 #if ESP_ARDUINO_VERSION_MAJOR >= 3
@@ -43,6 +47,31 @@ void error() {
   digitalWrite(LED_ROJO, LOW);
 }
 
+void publicarVolumen() {
+  int porcentaje = map(volumenBuzzer, 0, 255, 0, 100);
+  Serial.print("VOL");
+  Serial.println(porcentaje);
+}
+
+void cambiarVolumen() {
+  indiceVolumen = (indiceVolumen + 1) % totalNiveles;
+  volumenBuzzer = nivelesBuzzer[indiceVolumen];
+  publicarVolumen();
+}
+
+void establecerVolumen(int porcentaje) {
+  porcentaje = constrain(porcentaje, 0, 100);
+  volumenBuzzer = map(porcentaje, 0, 100, 0, 255);
+  // Mantiene BTN3 en el siguiente nivel esperado si la web fijó un volumen.
+  int mejorIndice = 0;
+  int menorDiferencia = abs(volumenBuzzer - nivelesBuzzer[0]);
+  for (int i = 1; i < totalNiveles; i++) {
+    int diferencia = abs(volumenBuzzer - nivelesBuzzer[i]);
+    if (diferencia < menorDiferencia) { mejorIndice = i; menorDiferencia = diferencia; }
+  }
+  indiceVolumen = mejorIndice;
+}
+
 void setup() {
   Serial.begin(115200);
   for (int i = 0; i < 4; i++) pinMode(botones[i], INPUT_PULLDOWN);
@@ -56,6 +85,7 @@ void loop() {
     bool presionado = digitalRead(botones[i]) == HIGH;
     if (presionado && !estadoPrevio[i]) {
       Serial.print("BTN"); Serial.println(i + 1);
+      if (i == 2) cambiarVolumen();  // GPIO 32 / BTN3: volumen físico.
       delay(50);
     }
     estadoPrevio[i] = presionado;
@@ -67,8 +97,7 @@ void loop() {
     if (msg == "BIEN") acierto();
     else if (msg == "MAL") error();
     else if (msg.startsWith("VOL")) {
-      int porcentaje = constrain(msg.substring(3).toInt(), 0, 100);
-      volumenBuzzer = map(porcentaje, 0, 100, 0, 255);
+      establecerVolumen(msg.substring(3).toInt());
     }
   }
 }

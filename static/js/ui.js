@@ -10,6 +10,12 @@ function updateBuzzerHud() {
 }
 
 export function getBuzzerVolume() { return buzzerVolume; }
+export function setBuzzerVolume(level) {
+  const numeric = Math.max(0, Math.min(1, Number(level) || 0));
+  buzzerVolume = SOUND_LEVELS.reduce((closest, candidate) => Math.abs(candidate - numeric) < Math.abs(closest - numeric) ? candidate : closest, SOUND_LEVELS[0]);
+  localStorage.setItem("rimaymaki-buzzer-volume", String(buzzerVolume));
+  updateBuzzerHud();
+}
 export function cycleBuzzerVolume() {
   const next = (SOUND_LEVELS.indexOf(buzzerVolume) + 1) % SOUND_LEVELS.length;
   buzzerVolume = SOUND_LEVELS[next];

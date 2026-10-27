@@ -2,9 +2,10 @@
 const encoder = new TextEncoder();
 
 export class ArduinoBridge {
-  constructor({ onButton, onStatus } = {}) {
+  constructor({ onButton, onStatus, onVolume } = {}) {
     this.onButton = onButton ?? (() => {});
     this.onStatus = onStatus ?? (() => {});
+    this.onVolume = onVolume ?? (() => {});
     this.port = null;
     this.writer = null;
     this.connected = false;
@@ -66,6 +67,7 @@ export class ArduinoBridge {
 
   handleLine(line) {
     if (/^BTN[1-4]$/.test(line)) this.onButton(line);
+    else if (/^VOL\d{1,3}$/.test(line)) this.onVolume(Math.max(0, Math.min(100, Number(line.slice(3)))) / 100);
   }
 
   async send(text) {
