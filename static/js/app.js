@@ -1,11 +1,17 @@
 import { getSession, nextRound, restartGame, retryRound, sendLandmarks } from "./game.js";
+import { ArduinoBridge } from "./arduino.js";
 import { LocalHandCamera } from "./recognition.js";
 import { cameraReady, cycleEffectsVolume, render } from "./ui.js";
 
-let camera, autoRetryTimer;
+let camera, autoRetryTimer, lastArduinoFeedback;
+let arduino;
 function apply(state) {
   if (!state || typeof state !== "object") throw new Error("Respuesta inválida del servicio.");
   render(state); camera?.setCorrectionHint?.(state.result === "incorrect" ? state.errorHint : "");
+  if (["correct", "incorrect"].includes(state.result) && state.result !== lastArduinoFeedback) {
+    lastArduinoFeedback = state.result;
+    arduino?.feedback(state.result);
+  } else if (!["correct", "incorrect"].includes(state.result)) lastArduinoFeedback = null;
   // La cámara sigue visible debajo de la celebración; solo se detiene al terminar la sesión.
   if (state.result === "completed") camera?.stop();
   if (state.result === "incorrect" && !autoRetryTimer) {
@@ -30,23 +36,41 @@ const fullscreen = document.querySelector("#fullscreen");
 async function toggleFullscreen() { const stage = document.querySelector("#camera-stage"); try { if (document.fullscreenElement) await document.exitFullscreen(); else if (stage.requestFullscreen) await stage.requestFullscreen(); else stage.webkitRequestFullscreen?.(); } catch (error) { console.warn("No se pudo activar pantalla completa", error); } }
 fullscreen.addEventListener("click", toggleFullscreen);
 document.addEventListener("fullscreenchange", () => { const active = Boolean(document.fullscreenElement); document.body.classList.toggle("immersive", active); fullscreen.textContent = active ? "×" : "⛶"; fullscreen.setAttribute("aria-label", active ? "Salir de pantalla completa" : "Activar pantalla completa"); });
-// Arduino como teclado USB: P = inicio/apagado visual, N = siguiente,
-// V = volumen de efectos y R = reiniciar actividad completa.
+async function hardwareAction(action) {
+  if (action === "start") {
+    await toggleFullscreen();
+  } else if (action === "next" && !document.querySelector("#next").classList.contains("hidden")) {
+    document.querySelector("#next").click();
+  } else if (action === "volume") {
+    cycleEffectsVolume();
+  } else if (action === "restart") {
+    await restartActivity();
+  }
+}
+const buttonAction = { BTN1: "start", BTN2: "next", BTN3: "volume", BTN4: "restart" };
+function showArduinoStatus(status) {
+  const button = document.querySelector("#arduino-connect");
+  if (!button) return;
+  const labels = { unsupported: "USB no compatible", disconnected: "CONECTAR ESP32", connecting: "CONECTANDO…", connected: "✓ ESP32", error: "REINTENTAR USB" };
+  button.textContent = labels[status] || labels.disconnected;
+  button.dataset.status = status;
+  button.title = status === "connected" ? "ESP32 conectado" : "Conectar el ESP32 por USB";
+}
+arduino = new ArduinoBridge({ onButton: code => hardwareAction(buttonAction[code]), onStatus: showArduinoStatus });
+document.querySelector("#arduino-connect").addEventListener("click", async () => {
+  try { await arduino.requestConnection(); }
+  catch (error) { console.warn("No se pudo conectar el ESP32.", error); showArduinoStatus("error"); }
+});
+// El ESP32 puede enviar BTN1…BTN4 directamente por Web Serial. Las teclas se
+// conservan para probar la interfaz sin hardware.
 document.addEventListener("keydown", async event => {
   if (event.repeat) return;
   const key = event.key.toLowerCase();
-  if (["p", "enter", " "].includes(key)) {
+  const action = ["p", "enter", " "].includes(key) ? "start" : ["n", "arrowright"].includes(key) ? "next" : ["v", "arrowup"].includes(key) ? "volume" : ["r", "arrowleft"].includes(key) ? "restart" : null;
+  if (action) {
     event.preventDefault();
-    await toggleFullscreen();
-  } else if (["n", "arrowright"].includes(key) && !document.querySelector("#next").classList.contains("hidden")) {
-    event.preventDefault();
-    document.querySelector("#next").click();
-  } else if (["v", "arrowup"].includes(key)) {
-    event.preventDefault();
-    cycleEffectsVolume();
-  } else if (["r", "arrowleft"].includes(key)) {
-    event.preventDefault();
-    await restartActivity();
+    await hardwareAction(action);
   }
 });
+arduino.restore().catch(() => showArduinoStatus("disconnected"));
 safely(startRecognition);
