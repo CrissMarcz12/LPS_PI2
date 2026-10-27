@@ -21,7 +21,7 @@ export class ArduinoBridge {
   }
 
   async requestConnection() {
-    if (!this.supported) throw new Error("Abre RimayMaki en Chrome o Edge para conectar el ESP32.");
+    if (!this.supported) throw new Error("Conecta el ESP32 desde Chrome o Edge en una tableta o computadora Windows.");
     const port = await navigator.serial.requestPort();
     await this.attach(port);
   }
