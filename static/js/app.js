@@ -1,7 +1,7 @@
 import { getSession, nextRound, restartGame, retryRound, sendLandmarks } from "./game.js";
-import { ArduinoBridge } from "./arduino.js?v=2";
+import { ArduinoBridge } from "./arduino.js?v=3";
 import { LocalHandCamera } from "./recognition.js";
-import { cameraReady, cycleBuzzerVolume, getBuzzerVolume, render, setBuzzerVolume, showState } from "./ui.js?v=3";
+import { cameraReady, getBuzzerEnabled, render, setBuzzerEnabled, showState, toggleBuzzer } from "./ui.js?v=4";
 
 let camera, autoRetryTimer, lastArduinoFeedback, gameActive = false;
 let arduino;
@@ -71,7 +71,7 @@ async function hardwareAction(action) {
   } else if (action === "next" && !document.querySelector("#next").classList.contains("hidden")) {
     document.querySelector("#next").click();
   } else if (action === "volume") {
-    arduino?.setBuzzerVolume(cycleBuzzerVolume());
+    arduino?.setBuzzerEnabled(toggleBuzzer());
   } else if (action === "restart") {
     await restartActivity();
   }
@@ -87,10 +87,10 @@ function showArduinoStatus(status) {
 }
 arduino = new ArduinoBridge({
   onButton: code => hardwareAction(buttonAction[code]),
-  onVolume: level => setBuzzerVolume(level),
+  onSound: enabled => setBuzzerEnabled(enabled),
   onStatus: status => {
     showArduinoStatus(status);
-    if (status === "connected") arduino?.setBuzzerVolume(getBuzzerVolume());
+    if (status === "connected") arduino?.setBuzzerEnabled(getBuzzerEnabled());
   },
 });
 document.querySelector("#arduino-connect").addEventListener("click", async () => {

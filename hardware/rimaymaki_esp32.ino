@@ -1,15 +1,12 @@
 // RimayMaki: ESP32 por USB serial a 115200 baudios.
-// BTN1 inicio/apagado visual, BTN2 siguiente, BTN3 volumen buzzer, BTN4 reinicio.
+// BTN1 inicio/apagado visual, BTN2 siguiente, BTN3 sonido sí/no, BTN4 reinicio.
 const int botones[4] = {25, 26, 32, 33};
 const int LED_VERDE = 27;
 const int LED_ROJO  = 13;
 const int BUZZER    = 14;
 bool estadoPrevio[4] = {false, false, false, false};
-// El botón físico BTN3 controla el volumen aun si la tableta no está conectada.
-const int nivelesBuzzer[] = {179, 89, 0, 255}; // 70 %, 35 %, silencio, 100 %
-const int totalNiveles = sizeof(nivelesBuzzer) / sizeof(nivelesBuzzer[0]);
-int indiceVolumen = 0;
-int volumenBuzzer = nivelesBuzzer[indiceVolumen];
+// BTN3 silencia o activa el buzzer aun si la tableta no está conectada.
+bool sonidoActivo = true;
 
 void buzzerInit() {
 #if ESP_ARDUINO_VERSION_MAJOR >= 3
@@ -21,15 +18,16 @@ void buzzerInit() {
 }
 
 void tono(int frecuencia, int ms) {
-  if (volumenBuzzer == 0) { delay(ms); return; }
+  // Con sonido apagado no se envía ninguna señal al buzzer.
+  if (!sonidoActivo) { delay(ms); return; }
 #if ESP_ARDUINO_VERSION_MAJOR >= 3
   ledcWriteTone(BUZZER, frecuencia);
-  ledcWrite(BUZZER, volumenBuzzer);
+  ledcWrite(BUZZER, 180);
   delay(ms);
   ledcWriteTone(BUZZER, 0);
 #else
   ledcWriteTone(0, frecuencia);
-  ledcWrite(0, volumenBuzzer);
+  ledcWrite(0, 180);
   delay(ms);
   ledcWriteTone(0, 0);
 #endif
@@ -47,29 +45,30 @@ void error() {
   digitalWrite(LED_ROJO, LOW);
 }
 
-void publicarVolumen() {
-  int porcentaje = map(volumenBuzzer, 0, 255, 0, 100);
-  Serial.print("VOL");
-  Serial.println(porcentaje);
+void publicarSonido() {
+  Serial.print("SOUND");
+  Serial.println(sonidoActivo ? "1" : "0");
 }
 
-void cambiarVolumen() {
-  indiceVolumen = (indiceVolumen + 1) % totalNiveles;
-  volumenBuzzer = nivelesBuzzer[indiceVolumen];
-  publicarVolumen();
+void cambiarSonido() {
+  sonidoActivo = !sonidoActivo;
+  // Garantiza que el buzzer quede apagado inmediatamente al silenciarlo.
+#if ESP_ARDUINO_VERSION_MAJOR >= 3
+  if (!sonidoActivo) ledcWriteTone(BUZZER, 0);
+#else
+  if (!sonidoActivo) ledcWriteTone(0, 0);
+#endif
+  publicarSonido();
 }
 
-void establecerVolumen(int porcentaje) {
-  porcentaje = constrain(porcentaje, 0, 100);
-  volumenBuzzer = map(porcentaje, 0, 100, 0, 255);
-  // Mantiene BTN3 en el siguiente nivel esperado si la web fijó un volumen.
-  int mejorIndice = 0;
-  int menorDiferencia = abs(volumenBuzzer - nivelesBuzzer[0]);
-  for (int i = 1; i < totalNiveles; i++) {
-    int diferencia = abs(volumenBuzzer - nivelesBuzzer[i]);
-    if (diferencia < menorDiferencia) { mejorIndice = i; menorDiferencia = diferencia; }
-  }
-  indiceVolumen = mejorIndice;
+void establecerSonido(bool activo) {
+  sonidoActivo = activo;
+#if ESP_ARDUINO_VERSION_MAJOR >= 3
+  if (!sonidoActivo) ledcWriteTone(BUZZER, 0);
+#else
+  if (!sonidoActivo) ledcWriteTone(0, 0);
+#endif
+  publicarSonido();
 }
 
 void setup() {
@@ -85,7 +84,7 @@ void loop() {
     bool presionado = digitalRead(botones[i]) == HIGH;
     if (presionado && !estadoPrevio[i]) {
       Serial.print("BTN"); Serial.println(i + 1);
-      if (i == 2) cambiarVolumen();  // GPIO 32 / BTN3: volumen físico.
+      if (i == 2) cambiarSonido();  // GPIO 32 / BTN3: sonido sí/no.
       delay(50);
     }
     estadoPrevio[i] = presionado;
@@ -96,8 +95,10 @@ void loop() {
     msg.trim();
     if (msg == "BIEN") acierto();
     else if (msg == "MAL") error();
-    else if (msg.startsWith("VOL")) {
-      establecerVolumen(msg.substring(3).toInt());
+    else if (msg == "SOUND1") {
+      establecerSonido(true);
+    } else if (msg == "SOUND0") {
+      establecerSonido(false);
     }
   }
 }

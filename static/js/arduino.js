@@ -2,10 +2,10 @@
 const encoder = new TextEncoder();
 
 export class ArduinoBridge {
-  constructor({ onButton, onStatus, onVolume } = {}) {
+  constructor({ onButton, onStatus, onSound } = {}) {
     this.onButton = onButton ?? (() => {});
     this.onStatus = onStatus ?? (() => {});
-    this.onVolume = onVolume ?? (() => {});
+    this.onSound = onSound ?? (() => {});
     this.port = null;
     this.writer = null;
     this.connected = false;
@@ -67,7 +67,7 @@ export class ArduinoBridge {
 
   handleLine(line) {
     if (/^BTN[1-4]$/.test(line)) this.onButton(line);
-    else if (/^VOL\d{1,3}$/.test(line)) this.onVolume(Math.max(0, Math.min(100, Number(line.slice(3)))) / 100);
+    else if (/^SOUND[01]$/.test(line)) this.onSound(line === "SOUND1");
   }
 
   async send(text) {
@@ -81,8 +81,7 @@ export class ArduinoBridge {
     if (result === "incorrect") return this.send("MAL");
   }
 
-  setBuzzerVolume(level) {
-    const percent = Math.round(Math.max(0, Math.min(1, Number(level) || 0)) * 100);
-    return this.send(`VOL${percent}`);
+  setBuzzerEnabled(enabled) {
+    return this.send(`SOUND${enabled ? 1 : 0}`);
   }
 }

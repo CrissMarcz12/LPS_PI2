@@ -1,27 +1,23 @@
 const $ = id => document.getElementById(id);
-const SOUND_LEVELS = [1, .7, .35, 0];
-const storedBuzzerVolume = localStorage.getItem("rimaymaki-buzzer-volume");
-let buzzerVolume = storedBuzzerVolume === null ? .7 : Number(storedBuzzerVolume);
-if (!SOUND_LEVELS.includes(buzzerVolume)) buzzerVolume = .7;
+const storedBuzzerEnabled = localStorage.getItem("rimaymaki-buzzer-enabled");
+let buzzerEnabled = storedBuzzerEnabled === null ? true : storedBuzzerEnabled === "true";
 
 function updateBuzzerHud() {
   const hud = $("game-volume");
-  if (hud) hud.innerHTML = `<em>BUZZER</em>${buzzerVolume ? "🔔" : "🔕"} <b>${Math.round(buzzerVolume * 100)}%</b>`;
+  if (hud) hud.innerHTML = `<em>SONIDO</em>${buzzerEnabled ? "🔔" : "🔕"} <b>${buzzerEnabled ? "SÍ" : "NO"}</b>`;
 }
 
-export function getBuzzerVolume() { return buzzerVolume; }
-export function setBuzzerVolume(level) {
-  const numeric = Math.max(0, Math.min(1, Number(level) || 0));
-  buzzerVolume = SOUND_LEVELS.reduce((closest, candidate) => Math.abs(candidate - numeric) < Math.abs(closest - numeric) ? candidate : closest, SOUND_LEVELS[0]);
-  localStorage.setItem("rimaymaki-buzzer-volume", String(buzzerVolume));
+export function getBuzzerEnabled() { return buzzerEnabled; }
+export function setBuzzerEnabled(enabled) {
+  buzzerEnabled = Boolean(enabled);
+  localStorage.setItem("rimaymaki-buzzer-enabled", String(buzzerEnabled));
   updateBuzzerHud();
 }
-export function cycleBuzzerVolume() {
-  const next = (SOUND_LEVELS.indexOf(buzzerVolume) + 1) % SOUND_LEVELS.length;
-  buzzerVolume = SOUND_LEVELS[next];
-  localStorage.setItem("rimaymaki-buzzer-volume", String(buzzerVolume));
+export function toggleBuzzer() {
+  buzzerEnabled = !buzzerEnabled;
+  localStorage.setItem("rimaymaki-buzzer-enabled", String(buzzerEnabled));
   updateBuzzerHud();
-  return buzzerVolume;
+  return buzzerEnabled;
 }
 export function showState(name) { ["start-state","empty-state","game-state","results-state"].forEach(id => $(id).classList.toggle("hidden", id !== name)); }
 export function render(state) {
