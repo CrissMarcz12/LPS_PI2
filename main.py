@@ -6,7 +6,7 @@ import subprocess
 import threading
 from uuid import uuid4
 import webbrowser
-from flask import Flask, abort, jsonify, render_template, request, send_file, session
+from flask import Flask, abort, jsonify, redirect, render_template, request, send_file, session
 from config import MODELS_DIR, SEQUENCE_LENGTH
 from features.labels import normalize_label
 from game.controller import GameController
@@ -45,7 +45,8 @@ def create_app() -> Flask:
 
     @app.get("/")
     def home():
-        return render_template("index.html")
+        # La tableta entra directamente a la experiencia de juego.
+        return redirect("/game", code=302)
 
     @app.get("/game")
     def game():
