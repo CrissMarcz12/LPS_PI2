@@ -49,7 +49,6 @@ def create_app() -> Flask:
 
     @app.get("/game")
     def game():
-        controller().start()
         return render_template("game.html")
 
     @app.get("/api/lab/rm-7f3a/entrenar")

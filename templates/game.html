@@ -14,6 +14,7 @@
     <div class="hud"><span>⭐ <b id="header-xp">0</b> XP</span><span>🔥 <b id="header-streak">0</b></span></div>
   </header>
   <main id="app" aria-live="polite">
+    <section id="start-state" class="start-state"><div class="start-orbit" aria-hidden="true"><i>★</i><i>✦</i><i>●</i></div><div class="start-brand">RM</div><p class="start-kicker">APRENDAMOS LENGUA DE SEÑAS</p><h1>RIMAY<span>MAKI</span></h1><h2 id="start-title">¡Hola, explorador!</h2><p id="start-copy">Presiona el botón START para comenzar.</p><button id="start-button" class="start-button" type="button">START</button><p id="start-summary">El ESP32 controla todo el juego.</p></section>
     <section id="empty-state" class="empty-state hidden"><span class="empty-icon">✦</span><p class="eyebrow">PREPARA TU PRÁCTICA</p><h1>Aún no hay modelos</h1><p>No existen letras entrenadas disponibles para jugar.</p><a class="button secondary" href="/">Volver al inicio</a></section>
     <section id="game-state" class="hidden">
       <div class="progress-track"><div id="progress-bar"></div></div>
@@ -35,6 +36,6 @@
     <section id="results-state" class="results-card hidden"><span class="empty-icon">★</span><p class="eyebrow">SESIÓN COMPLETADA</p><h1>Terminaste tu práctica</h1><div class="final-score"><strong id="final-score">0</strong><span>XP</span></div><div class="results-grid"><p>✓ <b id="final-correct">0</b> aciertos</p><p>✕ <b id="final-wrong">0</b> errores</p><p>🔥 racha máxima: <b id="final-streak">0</b></p><p>Precisión: <b id="final-accuracy">0%</b></p></div><a class="button primary" href="/game">JUGAR DE NUEVO</a></section>
   </main>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
-  <script type="module" src="{{ url_for('static', filename='js/app.js') }}?v=6"></script>
+  <script type="module" src="{{ url_for('static', filename='js/app.js') }}?v=7"></script>
 </body>
 </html>

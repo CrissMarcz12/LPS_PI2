@@ -17,7 +17,7 @@ export function cycleBuzzerVolume() {
   updateBuzzerHud();
   return buzzerVolume;
 }
-export function showState(name) { ["empty-state","game-state","results-state"].forEach(id => $(id).classList.toggle("hidden", id !== name)); }
+export function showState(name) { ["start-state","empty-state","game-state","results-state"].forEach(id => $(id).classList.toggle("hidden", id !== name)); }
 export function render(state) {
   updateBuzzerHud();
   if (!state.target) { showState("empty-state"); return; }
