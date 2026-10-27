@@ -6,7 +6,7 @@ const int LED_ROJO  = 13;
 const int BUZZER    = 14;
 bool estadoPrevio[4] = {false, false, false, false};
 // El botón físico BTN3 controla el volumen aun si la tableta no está conectada.
-const int nivelesBuzzer[] = {179, 255, 0, 89}; // 70 %, 100 %, silencio, 35 %
+const int nivelesBuzzer[] = {179, 89, 0, 255}; // 70 %, 35 %, silencio, 100 %
 const int totalNiveles = sizeof(nivelesBuzzer) / sizeof(nivelesBuzzer[0]);
 int indiceVolumen = 0;
 int volumenBuzzer = nivelesBuzzer[indiceVolumen];

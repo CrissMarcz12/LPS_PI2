@@ -1,5 +1,5 @@
 const $ = id => document.getElementById(id);
-const SOUND_LEVELS = [0, .35, .7, 1];
+const SOUND_LEVELS = [1, .7, .35, 0];
 const storedBuzzerVolume = localStorage.getItem("rimaymaki-buzzer-volume");
 let buzzerVolume = storedBuzzerVolume === null ? .7 : Number(storedBuzzerVolume);
 if (!SOUND_LEVELS.includes(buzzerVolume)) buzzerVolume = .7;
