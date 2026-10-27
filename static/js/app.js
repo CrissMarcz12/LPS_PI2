@@ -12,11 +12,12 @@ function apply(state) {
   if (!gameActive) return;
   if (state.result === "completed") { finishActivity(state); return; }
   render(state); camera?.setCorrectionHint?.(state.result === "incorrect" ? state.errorHint : "");
-  if (["correct", "incorrect"].includes(state.result) && state.result !== lastArduinoFeedback) {
+  const canNotifyArduino = Boolean(state.handDetected && camera?.handVisible);
+  if (["correct", "incorrect"].includes(state.result) && canNotifyArduino && state.result !== lastArduinoFeedback) {
     lastArduinoFeedback = state.result;
     // Con sonido apagado se conserva el LED, pero no se manda ningún tono.
     arduino?.feedback(state.result, getBuzzerEnabled());
-  } else if (!["correct", "incorrect"].includes(state.result)) lastArduinoFeedback = null;
+  } else if (!["correct", "incorrect"].includes(state.result) || !canNotifyArduino) lastArduinoFeedback = null;
   // La cámara sigue visible debajo de la celebración; solo se detiene al terminar la sesión.
   if (state.result === "completed") camera?.stop();
   if (state.result === "incorrect" && !autoRetryTimer) {

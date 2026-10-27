@@ -49,7 +49,7 @@ export class LocalHandCamera {
     this.video = video; this.landmarkCanvas = landmarkCanvas; this.onFrame = onFrame;
     this.onError = onError; this.sender = sender; this.intervalMs = intervalMs;
     this.running = false; this.inFlight = 0; this.maxInFlight = 2; this.lastSent = 0; this.lastNoHandSent = 0;
-    this.requestId = 0; this.lastRenderedRequest = 0; this.correctionHint = "";
+    this.requestId = 0; this.lastRenderedRequest = 0; this.correctionHint = ""; this.handVisible = false;
   }
   async start() {
     try {
@@ -64,9 +64,10 @@ export class LocalHandCamera {
   async process() { if (!this.running) return; try { await this.hands.send({image:this.video}); } catch (error) { this.onError(error); } if (this.running) requestAnimationFrame(() => this.process()); }
   onResults(result) {
     const raw = result.multiHandLandmarks?.[0];
-    if (!raw) { this.drawLandmarks([]); this.sendNoHand(); return; }
+    if (!raw) { this.handVisible = false; this.drawLandmarks([]); this.sendNoHand(); return; }
     // La vista de cámara está espejada: se espejan también los puntos para que
     // la clasificación mantenga exactamente el mismo sistema usado al entrenar.
+    this.handVisible = true;
     const points = raw.map(point => ({x:1-point.x, y:point.y, z:point.z}));
     this.drawLandmarks(points, this.correctionHint); const now = performance.now();
     // No esperamos toda una ida y vuelta a Render para capturar la siguiente
@@ -82,13 +83,11 @@ export class LocalHandCamera {
     try {
       const state = await this.sender(payload);
       if (!this.running) return;
-      // Las respuestas de red pueden llegar desordenadas. Se ignoran estados
-      // viejos, salvo los resultados finales que jamás deben desaparecer.
-      const finalState = ["correct", "incorrect", "completed"].includes(state.result);
-      if (finalState || requestId >= this.lastRenderedRequest) {
-        this.lastRenderedRequest = Math.max(this.lastRenderedRequest, requestId);
-        this.onFrame(state);
-      }
+      // No permitimos que una respuesta vieja convierta en error una cámara que
+      // ya no detecta mano (por ejemplo al taparla o detenerla).
+      if (requestId < this.requestId || (!this.handVisible && payload.handDetected)) return;
+      this.lastRenderedRequest = Math.max(this.lastRenderedRequest, requestId);
+      this.onFrame(state);
     } catch (error) { console.error("Error al enviar landmarks", error); this.onError(error); }
     finally { this.inFlight = Math.max(0, this.inFlight - 1); }
   }
@@ -103,7 +102,7 @@ export class LocalHandCamera {
     for(const [from,to] of CONNECTIONS){context.strokeStyle=highlighted.includes(from)&&highlighted.includes(to)?"#ff3f5e":"#ffffff";context.beginPath();context.moveTo(points[from].x*width,points[from].y*height);context.lineTo(points[to].x*width,points[to].y*height);context.stroke();}
     for(const [index,point] of points.entries()){context.fillStyle=highlighted.includes(index)?"#ff3f5e":"#ffdc5d";context.beginPath();context.arc(point.x*width,point.y*height,Math.max(3,width/180),0,Math.PI*2);context.fill();} context.shadowBlur=0;
   }
-  stop() { this.running=false; this.hands?.close?.(); this.hands=null; this.stream?.getTracks().forEach(track=>track.stop()); this.stream=null; this.drawLandmarks([]); }
+  stop() { this.running=false; this.handVisible=false; this.hands?.close?.(); this.hands=null; this.stream?.getTracks().forEach(track=>track.stop()); this.stream=null; this.drawLandmarks([]); }
 }
 
 function normalizedVector(points) {
