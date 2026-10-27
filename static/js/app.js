@@ -1,7 +1,7 @@
 import { getSession, nextRound, restartGame, retryRound, sendLandmarks } from "./game.js";
 import { ArduinoBridge } from "./arduino.js";
 import { LocalHandCamera } from "./recognition.js";
-import { cameraReady, cycleEffectsVolume, render } from "./ui.js";
+import { cameraReady, cycleBuzzerVolume, getBuzzerVolume, render } from "./ui.js";
 
 let camera, autoRetryTimer, lastArduinoFeedback;
 let arduino;
@@ -42,7 +42,7 @@ async function hardwareAction(action) {
   } else if (action === "next" && !document.querySelector("#next").classList.contains("hidden")) {
     document.querySelector("#next").click();
   } else if (action === "volume") {
-    cycleEffectsVolume();
+    arduino?.setBuzzerVolume(cycleBuzzerVolume());
   } else if (action === "restart") {
     await restartActivity();
   }
@@ -56,7 +56,13 @@ function showArduinoStatus(status) {
   button.dataset.status = status;
   button.title = status === "connected" ? "ESP32 conectado" : "Conectar el ESP32 por USB";
 }
-arduino = new ArduinoBridge({ onButton: code => hardwareAction(buttonAction[code]), onStatus: showArduinoStatus });
+arduino = new ArduinoBridge({
+  onButton: code => hardwareAction(buttonAction[code]),
+  onStatus: status => {
+    showArduinoStatus(status);
+    if (status === "connected") arduino?.setBuzzerVolume(getBuzzerVolume());
+  },
+});
 document.querySelector("#arduino-connect").addEventListener("click", async () => {
   try { await arduino.requestConnection(); }
   catch (error) { console.warn("No se pudo conectar el ESP32.", error); showArduinoStatus("error"); }

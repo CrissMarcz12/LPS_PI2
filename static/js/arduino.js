@@ -78,4 +78,9 @@ export class ArduinoBridge {
     if (result === "correct") return this.send("BIEN");
     if (result === "incorrect") return this.send("MAL");
   }
+
+  setBuzzerVolume(level) {
+    const percent = Math.round(Math.max(0, Math.min(1, Number(level) || 0)) * 100);
+    return this.send(`VOL${percent}`);
+  }
 }

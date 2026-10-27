@@ -1,38 +1,25 @@
 const $ = id => document.getElementById(id);
-let previousResult = "waiting";
 const SOUND_LEVELS = [0, .35, .7, 1];
-const storedEffectsVolume = localStorage.getItem("rimaymaki-effects-volume");
-let effectsVolume = storedEffectsVolume === null ? .7 : Number(storedEffectsVolume);
-if (!SOUND_LEVELS.includes(effectsVolume)) effectsVolume = .7;
+const storedBuzzerVolume = localStorage.getItem("rimaymaki-buzzer-volume");
+let buzzerVolume = storedBuzzerVolume === null ? .7 : Number(storedBuzzerVolume);
+if (!SOUND_LEVELS.includes(buzzerVolume)) buzzerVolume = .7;
 
-function updateSoundHud() {
+function updateBuzzerHud() {
   const hud = $("game-volume");
-  if (hud) hud.innerHTML = `<em>SONIDO</em>${effectsVolume ? "🔊" : "🔇"} <b>${Math.round(effectsVolume * 100)}%</b>`;
+  if (hud) hud.innerHTML = `<em>BUZZER</em>${buzzerVolume ? "🔔" : "🔕"} <b>${Math.round(buzzerVolume * 100)}%</b>`;
 }
 
-export function cycleEffectsVolume() {
-  const next = (SOUND_LEVELS.indexOf(effectsVolume) + 1) % SOUND_LEVELS.length;
-  effectsVolume = SOUND_LEVELS[next];
-  localStorage.setItem("rimaymaki-effects-volume", String(effectsVolume));
-  updateSoundHud();
-  return effectsVolume;
-}
-
-function playTone(frequency, start, duration, type = "sine", gain = .05) {
-  if (!effectsVolume) return;
-  const context = window.rimayAudio ??= new AudioContext();
-  const oscillator = context.createOscillator(), volume = context.createGain();
-  oscillator.type = type; oscillator.frequency.setValueAtTime(frequency, start);
-  volume.gain.setValueAtTime(.001, start); volume.gain.exponentialRampToValueAtTime(gain * effectsVolume, start + .02); volume.gain.exponentialRampToValueAtTime(.001, start + duration);
-  oscillator.connect(volume).connect(context.destination); oscillator.start(start); oscillator.stop(start + duration + .03);
-}
-function playFeedbackSound(result) {
-  if (!effectsVolume || previousResult === result || !["correct", "incorrect"].includes(result)) return;
-  try { const now = (window.rimayAudio ??= new AudioContext()).currentTime; result === "correct" ? [523,659,784].forEach((note,index) => playTone(note, now + index * .1, .16, "triangle", .055)) : playTone(180, now, .25, "sawtooth", .035); } catch (_) { /* El juego sigue funcionando si el navegador bloquea audio. */ }
+export function getBuzzerVolume() { return buzzerVolume; }
+export function cycleBuzzerVolume() {
+  const next = (SOUND_LEVELS.indexOf(buzzerVolume) + 1) % SOUND_LEVELS.length;
+  buzzerVolume = SOUND_LEVELS[next];
+  localStorage.setItem("rimaymaki-buzzer-volume", String(buzzerVolume));
+  updateBuzzerHud();
+  return buzzerVolume;
 }
 export function showState(name) { ["empty-state","game-state","results-state"].forEach(id => $(id).classList.toggle("hidden", id !== name)); }
 export function render(state) {
-  updateSoundHud();
+  updateBuzzerHud();
   if (!state.target) { showState("empty-state"); return; }
   if (state.result === "completed") { renderResults(state); return; }
   showState("game-state");
@@ -78,7 +65,6 @@ export function render(state) {
     incorrect:["✕ CASI", state.errorHint || "Mira la foto e inténtalo otra vez."],
   };
   [title.textContent, text.textContent] = copy[state.result] || copy.waiting;
-  playFeedbackSound(state.result); previousResult = state.result;
 }
 function renderResults(state) { showState("results-state"); [["final-score",state.score],["final-correct",state.correctAnswers],["final-wrong",state.wrongAnswers],["final-streak",state.maxStreak],["final-accuracy",`${state.accuracy}%`]].forEach(([id,value]) => $(id).textContent=value); }
 export function cameraReady(active, message) { $("camera-dot").classList.toggle("active", active); $("camera-label").textContent = message; $("camera-message").classList.toggle("hidden", active); if (!active) $("camera-message").textContent = message; }
