@@ -12,7 +12,8 @@ function apply(state) {
   render(state); camera?.setCorrectionHint?.(state.result === "incorrect" ? state.errorHint : "");
   if (["correct", "incorrect"].includes(state.result) && state.result !== lastArduinoFeedback) {
     lastArduinoFeedback = state.result;
-    arduino?.feedback(state.result);
+    // SONIDO: NO no manda BIEN/MAL al ESP32: el buzzer no recibe señal.
+    if (getBuzzerEnabled()) arduino?.feedback(state.result);
   } else if (!["correct", "incorrect"].includes(state.result)) lastArduinoFeedback = null;
   // La cámara sigue visible debajo de la celebración; solo se detiene al terminar la sesión.
   if (state.result === "completed") camera?.stop();
