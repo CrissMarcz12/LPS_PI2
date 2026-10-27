@@ -162,7 +162,7 @@ def create_app() -> Flask:
         if not device_is_authorized():
             return jsonify({"success": False, "message": "Dispositivo no autorizado."}), 401
         try:
-            wait_seconds = min(max(float(request.args.get("wait", "0")), 0), 2)
+            wait_seconds = min(max(float(request.args.get("wait", "0")), 0), 3)
         except ValueError:
             wait_seconds = 0
         with device_commands_ready:

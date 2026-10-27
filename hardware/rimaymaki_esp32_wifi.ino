@@ -20,7 +20,7 @@ const int botones[4] = {25, 26, 32, 33};
 const int LED_VERDE = 27;
 const int LED_ROJO  = 13;
 const int BUZZER    = 14;
-// Render mantiene esta consulta hasta un segundo y despierta al ESP32 apenas
+// Render mantiene esta consulta abierta y despierta al ESP32 apenas
 // el juego genera una orden; evita la espera perceptible del sondeo clásico.
 const unsigned long COMMAND_POLL_MS = 20;
 
@@ -92,22 +92,32 @@ void tono(int frecuencia, int ms) {
 
 void acierto() {
   digitalWrite(LED_VERDE, HIGH);
-  tono(1000, 200); tono(1500, 300);
+  // Un único destello verde con melodía corta de acierto.
+  tono(1100, 110); tono(1650, 160);
   digitalWrite(LED_VERDE, LOW);
 }
 
+void parpadearError(bool conSonido) {
+  // Dos pulsos rojos: son visibles incluso cuando SONIDO está apagado.
+  for (int pulso = 0; pulso < 2; pulso++) {
+    digitalWrite(LED_ROJO, HIGH);
+    if (conSonido && sonidoActivo) tono(300, 170);
+    else delay(170);
+    digitalWrite(LED_ROJO, LOW);
+    if (pulso == 0) delay(90);
+  }
+}
+
 void error() {
-  digitalWrite(LED_ROJO, HIGH);
-  tono(300, 600);
-  digitalWrite(LED_ROJO, LOW);
+  parpadearError(true);
 }
 
 void aciertoSilencioso() {
-  digitalWrite(LED_VERDE, HIGH); delay(500); digitalWrite(LED_VERDE, LOW);
+  digitalWrite(LED_VERDE, HIGH); delay(270); digitalWrite(LED_VERDE, LOW);
 }
 
 void errorSilencioso() {
-  digitalWrite(LED_ROJO, HIGH); delay(600); digitalWrite(LED_ROJO, LOW);
+  parpadearError(false);
 }
 
 bool conectadoWiFi() {
@@ -163,7 +173,7 @@ void consultarComando() {
   if (!conectadoWiFi()) return;
   WiFiClientSecure client;
   HTTPClient http;
-  String url = String(API_URL) + "/api/device/" + DEVICE_ID + "/command?wait=1";
+  String url = String(API_URL) + "/api/device/" + DEVICE_ID + "/command?wait=3";
   configurarHttp(http, client, url);
   int codigo = http.GET();
   if (codigo == HTTP_CODE_OK) ejecutarComando(comandoDeJson(http.getString()));
