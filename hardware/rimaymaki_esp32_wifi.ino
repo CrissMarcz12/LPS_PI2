@@ -25,6 +25,37 @@ const unsigned long COMMAND_POLL_MS = 250;
 bool estadoPrevio[4] = {false, false, false, false};
 bool sonidoActivo = true;
 unsigned long ultimoPoll = 0;
+unsigned long ultimoLogHttp = 0;
+int ultimoEstadoWiFi = -1;
+
+const char* nombreEstadoWiFi(wl_status_t estado) {
+  switch (estado) {
+    case WL_CONNECTED: return "CONECTADO";
+    case WL_NO_SSID_AVAIL: return "RED NO ENCONTRADA";
+    case WL_CONNECT_FAILED: return "CLAVE O RED INCORRECTA";
+    case WL_CONNECTION_LOST: return "CONEXIÓN PERDIDA";
+    case WL_DISCONNECTED: return "DESCONECTADO";
+    default: return "CONECTANDO";
+  }
+}
+
+void mostrarEstadoWiFi() {
+  int estado = WiFi.status();
+  if (estado == ultimoEstadoWiFi) return;
+  ultimoEstadoWiFi = estado;
+  Serial.printf("[WIFI] %s", nombreEstadoWiFi((wl_status_t)estado));
+  if (estado == WL_CONNECTED) Serial.printf(" · IP: %s", WiFi.localIP().toString().c_str());
+  Serial.println();
+}
+
+void mostrarErrorHttp(const char* accion, int codigo) {
+  if (codigo >= 200 && codigo < 300) return;
+  if (millis() - ultimoLogHttp < 3000) return;
+  ultimoLogHttp = millis();
+  Serial.printf("[RENDER] %s falló · HTTP %d\n", accion, codigo);
+  if (codigo == 401) Serial.println("[RENDER] Revisa DEVICE_TOKEN y ESP32_DEVICE_TOKEN.");
+  if (codigo == 404) Serial.println("[RENDER] Revisa API_URL: no debe terminar en /game.");
+}
 
 void buzzerInit() {
 #if ESP_ARDUINO_VERSION_MAJOR >= 3
@@ -100,7 +131,9 @@ void enviarEvento(const char* evento) {
   String url = String(API_URL) + "/api/device/" + DEVICE_ID + "/event";
   configurarHttp(http, client, url);
   String cuerpo = String("{\"event\":\"") + evento + "\"}";
-  http.POST(cuerpo);
+  int codigo = http.POST(cuerpo);
+  if (codigo >= 200 && codigo < 300) Serial.printf("[BOTÓN] %s enviado\n", evento);
+  else mostrarErrorHttp("evento", codigo);
   http.end();
 }
 
@@ -115,6 +148,7 @@ String comandoDeJson(const String& cuerpo) {
 }
 
 void ejecutarComando(const String& comando) {
+  if (comando.length()) Serial.printf("[JUEGO] comando: %s\n", comando.c_str());
   if (comando == "BIEN") acierto();
   else if (comando == "MAL") error();
   else if (comando == "LED_BIEN") aciertoSilencioso();
@@ -131,11 +165,16 @@ void consultarComando() {
   configurarHttp(http, client, url);
   int codigo = http.GET();
   if (codigo == HTTP_CODE_OK) ejecutarComando(comandoDeJson(http.getString()));
+  else mostrarErrorHttp("consulta", codigo);
   http.end();
 }
 
 void setup() {
   Serial.begin(115200);
+  delay(300);
+  Serial.println("\n=== RimayMaki ESP32 Wi-Fi ===");
+  Serial.printf("[CONFIG] Dispositivo: %s · API: %s\n", DEVICE_ID, API_URL);
+  Serial.printf("[WIFI] Conectando a: %s\n", WIFI_SSID);
   for (int i = 0; i < 4; i++) pinMode(botones[i], INPUT_PULLDOWN);
   pinMode(LED_VERDE, OUTPUT); pinMode(LED_ROJO, OUTPUT);
   buzzerInit();
@@ -146,6 +185,7 @@ void setup() {
 }
 
 void loop() {
+  mostrarEstadoWiFi();
   for (int i = 0; i < 4; i++) {
     bool presionado = digitalRead(botones[i]) == HIGH;
     if (presionado && !estadoPrevio[i]) {

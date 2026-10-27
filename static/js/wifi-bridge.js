@@ -6,6 +6,7 @@ export class WifiBridge {
     this.deviceId = new URLSearchParams(location.search).get("device") || localStorage.getItem("rimaymaki-device-id") || "RIMAY-001";
     localStorage.setItem("rimaymaki-device-id", this.deviceId);
     this.connected = false;
+    this.status = "disconnected";
     this.timer = null;
     this.polling = false;
     this.transport = "wifi";
@@ -13,9 +14,15 @@ export class WifiBridge {
 
   get supported() { return true; }
 
+  setStatus(status) {
+    if (this.status === status) return;
+    this.status = status;
+    this.onStatus(status);
+  }
+
   async restore() {
     if (this.timer) return;
-    this.onStatus("connecting");
+    this.setStatus("connecting");
     await this.pollEvents();
     this.timer = window.setInterval(() => this.pollEvents(), 250);
   }
@@ -29,12 +36,12 @@ export class WifiBridge {
       const response = await fetch(`/api/device/${encodeURIComponent(this.deviceId)}/events`, { cache: "no-store" });
       if (!response.ok) throw new Error("No se pudo consultar el ESP32 Wi-Fi.");
       const data = await response.json();
-      this.connected = true;
-      this.onStatus("connected");
+      this.connected = Boolean(data.online);
+      this.setStatus(this.connected ? "connected" : "disconnected");
       (data.events || []).forEach(event => this.onButton(event));
     } catch (error) {
       this.connected = false;
-      this.onStatus("error");
+      this.setStatus("error");
     } finally {
       this.polling = false;
     }

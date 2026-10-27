@@ -1,6 +1,6 @@
 import { getSession, nextRound, restartGame, retryRound, sendLandmarks } from "./game.js";
 import { ArduinoBridge } from "./arduino.js?v=4";
-import { WifiBridge } from "./wifi-bridge.js?v=1";
+import { WifiBridge } from "./wifi-bridge.js?v=2";
 import { LocalHandCamera } from "./recognition.js";
 import { cameraReady, getBuzzerEnabled, render, setBuzzerEnabled, showState, toggleBuzzer } from "./ui.js?v=4";
 
@@ -84,7 +84,7 @@ function showArduinoStatus(status) {
   const button = document.querySelector("#arduino-connect");
   if (!button) return;
   if (wifiMode) {
-    const labels = { connecting: "BUSCANDO ESP32…", connected: "✓ ESP32 WIFI", error: "ESPERANDO ESP32 WIFI" };
+    const labels = { connecting: "BUSCANDO ESP32…", connected: "✓ ESP32 WIFI", disconnected: "ESP32 SIN CONEXIÓN", error: "SIN CONEXIÓN A RENDER" };
     button.textContent = labels[status] || labels.connecting;
     button.dataset.status = status;
     button.title = "ESP32 conectado por Wi-Fi";

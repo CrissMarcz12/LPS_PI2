@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import hmac
 import re
+import time
 from pathlib import Path
 import subprocess
 import threading
@@ -40,6 +41,7 @@ def create_app() -> Flask:
     # No guarda entrenamiento ni modelos y se vacía de forma segura al reiniciar.
     device_events: dict[str, deque[str]] = defaultdict(deque)
     device_commands: dict[str, deque[str]] = defaultdict(deque)
+    device_last_seen: dict[str, float] = {}
     devices_lock = threading.Lock()
     training = TrainingController()
     app.extensions["rimaymaki_controllers"] = controllers
@@ -125,6 +127,7 @@ def create_app() -> Flask:
             return jsonify({"success": False, "message": "Evento no válido."}), 400
         with devices_lock:
             device_events[device_id].append(event)
+            device_last_seen[device_id] = time.monotonic()
         return jsonify({"success": True})
 
     @app.get("/api/device/<device_id>/events")
@@ -134,7 +137,8 @@ def create_app() -> Flask:
         with devices_lock:
             events = list(device_events[device_id])
             device_events[device_id].clear()
-        response = jsonify({"events": events})
+            online = time.monotonic() - device_last_seen.get(device_id, 0) < 8
+        response = jsonify({"events": events, "online": online})
         response.headers["Cache-Control"] = "no-store"
         return response
 
@@ -156,6 +160,7 @@ def create_app() -> Flask:
         if not device_is_authorized():
             return jsonify({"success": False, "message": "Dispositivo no autorizado."}), 401
         with devices_lock:
+            device_last_seen[device_id] = time.monotonic()
             command = device_commands[device_id].popleft() if device_commands[device_id] else ""
         response = jsonify({"command": command})
         response.headers["Cache-Control"] = "no-store"
