@@ -1,9 +1,12 @@
 """Servidor local de la experiencia de juego RimayMaki."""
 from __future__ import annotations
 import os
+import hmac
+import re
 from pathlib import Path
 import subprocess
 import threading
+from collections import defaultdict, deque
 from uuid import uuid4
 import webbrowser
 from flask import Flask, abort, jsonify, redirect, render_template, request, send_file, session
@@ -12,6 +15,10 @@ from features.labels import normalize_label
 from game.controller import GameController
 from training.controller import TrainingController
 from training.storage import initialize_storage, reference_path
+
+DEVICE_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{3,48}$")
+DEVICE_EVENTS = {"BTN1", "BTN2", "BTN3", "BTN4"}
+DEVICE_COMMANDS = {"BIEN", "MAL", "LED_BIEN", "LED_MAL", "SOUND0", "SOUND1"}
 
 def open_browser(url: str) -> None:
     candidates = [Path(os.environ.get(name, "")) / "Google/Chrome/Application/chrome.exe" for name in ("PROGRAMFILES", "PROGRAMFILES(X86)")]
@@ -29,6 +36,11 @@ def create_app() -> Flask:
     initialize_storage()
     controllers: dict[str, GameController] = {}
     controllers_lock = threading.Lock()
+    # Cola efímera de tiempo real: Render usa un único worker (render.yaml).
+    # No guarda entrenamiento ni modelos y se vacía de forma segura al reiniciar.
+    device_events: dict[str, deque[str]] = defaultdict(deque)
+    device_commands: dict[str, deque[str]] = defaultdict(deque)
+    devices_lock = threading.Lock()
     training = TrainingController()
     app.extensions["rimaymaki_controllers"] = controllers
     app.extensions["rimaymaki_training"] = training
@@ -42,6 +54,16 @@ def create_app() -> Flask:
         identifier = client_id()
         with controllers_lock:
             return controllers.setdefault(identifier, GameController(MODELS_DIR, SEQUENCE_LENGTH))
+
+    def valid_device_id(device_id: str) -> str:
+        if not DEVICE_ID_PATTERN.fullmatch(device_id):
+            abort(404)
+        return device_id
+
+    def device_is_authorized() -> bool:
+        supplied = request.headers.get("X-Device-Token", "")
+        expected = os.environ.get("ESP32_DEVICE_TOKEN", "RIMAYMAKI-DEMO-CHANGE-ME")
+        return bool(supplied) and hmac.compare_digest(supplied, expected)
 
     @app.get("/")
     def home():
@@ -91,6 +113,53 @@ def create_app() -> Flask:
     @app.post("/api/next")
     def next_round():
         return jsonify(controller().next_round())
+
+    @app.post("/api/device/<device_id>/event")
+    def device_event(device_id: str):
+        """Entrada autenticada desde el ESP32: BTN1…BTN4."""
+        valid_device_id(device_id)
+        if not device_is_authorized():
+            return jsonify({"success": False, "message": "Dispositivo no autorizado."}), 401
+        event = str((request.get_json(silent=True) or {}).get("event", "")).upper()
+        if event not in DEVICE_EVENTS:
+            return jsonify({"success": False, "message": "Evento no válido."}), 400
+        with devices_lock:
+            device_events[device_id].append(event)
+        return jsonify({"success": True})
+
+    @app.get("/api/device/<device_id>/events")
+    def game_device_events(device_id: str):
+        """Eventos que consume la pantalla del juego emparejada con este ESP32."""
+        valid_device_id(device_id)
+        with devices_lock:
+            events = list(device_events[device_id])
+            device_events[device_id].clear()
+        response = jsonify({"events": events})
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
+    @app.post("/api/device/<device_id>/command")
+    def game_device_command(device_id: str):
+        """Salida del juego para LEDs, buzzer y estado de sonido del ESP32."""
+        valid_device_id(device_id)
+        command = str((request.get_json(silent=True) or {}).get("command", "")).upper()
+        if command not in DEVICE_COMMANDS:
+            return jsonify({"success": False, "message": "Comando no válido."}), 400
+        with devices_lock:
+            device_commands[device_id].append(command)
+        return jsonify({"success": True})
+
+    @app.get("/api/device/<device_id>/command")
+    def device_next_command(device_id: str):
+        """El ESP32 consulta periódicamente la siguiente orden pendiente."""
+        valid_device_id(device_id)
+        if not device_is_authorized():
+            return jsonify({"success": False, "message": "Dispositivo no autorizado."}), 401
+        with devices_lock:
+            command = device_commands[device_id].popleft() if device_commands[device_id] else ""
+        response = jsonify({"command": command})
+        response.headers["Cache-Control"] = "no-store"
+        return response
 
     @app.get("/api/training")
     def training_overview():

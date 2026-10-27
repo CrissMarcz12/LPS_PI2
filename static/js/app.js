@@ -1,10 +1,12 @@
 import { getSession, nextRound, restartGame, retryRound, sendLandmarks } from "./game.js";
 import { ArduinoBridge } from "./arduino.js?v=4";
+import { WifiBridge } from "./wifi-bridge.js?v=1";
 import { LocalHandCamera } from "./recognition.js";
 import { cameraReady, getBuzzerEnabled, render, setBuzzerEnabled, showState, toggleBuzzer } from "./ui.js?v=4";
 
 let camera, autoRetryTimer, lastArduinoFeedback, gameActive = false;
 let arduino;
+const wifiMode = location.protocol === "https:" && new URLSearchParams(location.search).get("transport") !== "usb";
 function apply(state) {
   if (!state || typeof state !== "object") throw new Error("Respuesta inválida del servicio.");
   if (!gameActive) return;
@@ -81,19 +83,27 @@ const buttonAction = { BTN1: "start", BTN2: "next", BTN3: "volume", BTN4: "resta
 function showArduinoStatus(status) {
   const button = document.querySelector("#arduino-connect");
   if (!button) return;
+  if (wifiMode) {
+    const labels = { connecting: "BUSCANDO ESP32…", connected: "✓ ESP32 WIFI", error: "ESPERANDO ESP32 WIFI" };
+    button.textContent = labels[status] || labels.connecting;
+    button.dataset.status = status;
+    button.title = "ESP32 conectado por Wi-Fi";
+    return;
+  }
   const labels = { unsupported: "USB no compatible", disconnected: "CONECTAR ESP32", connecting: "CONECTANDO…", connected: "✓ ESP32", error: "REINTENTAR USB" };
   button.textContent = labels[status] || labels.disconnected;
   button.dataset.status = status;
   button.title = status === "connected" ? "ESP32 conectado" : "Conectar el ESP32 por USB";
 }
-arduino = new ArduinoBridge({
+const bridgeOptions = {
   onButton: code => hardwareAction(buttonAction[code]),
   onSound: enabled => setBuzzerEnabled(enabled),
   onStatus: status => {
     showArduinoStatus(status);
     if (status === "connected") arduino?.setBuzzerEnabled(getBuzzerEnabled());
   },
-});
+};
+arduino = wifiMode ? new WifiBridge(bridgeOptions) : new ArduinoBridge(bridgeOptions);
 document.querySelector("#arduino-connect").addEventListener("click", async () => {
   try { await arduino.requestConnection(); }
   catch (error) { console.warn("No se pudo conectar el ESP32.", error); showArduinoStatus("error"); }

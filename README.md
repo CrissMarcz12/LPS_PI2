@@ -25,7 +25,13 @@ La misma etiqueta, modelo e imagen aparecen automáticamente en el juego. Las ca
 
 `/game` abre directamente en modo quiosco: solo se ve la cámara, la seña de referencia y los puntos dentro de ella. La detección de la mano ocurre en la tableta con MediaPipe Web; al servidor se envían únicamente 63 valores de landmarks, no fotos, para mantener el vídeo y los puntos suaves.
 
-El juego no reproduce sonidos por los parlantes de la pantalla: toda la retroalimentación sonora sale del buzzer ESP32. Sube [`hardware/rimaymaki_esp32.ino`](hardware/rimaymaki_esp32.ino) a tu placa. Al abrir `/game` se muestra la portada y espera `BTN1` (**START**). Durante la partida, el mismo `BTN1` la termina y muestra “Gracias por jugar”; pulsarlo otra vez inicia una sesión nueva. `BTN2` pasa a la siguiente seña correcta, `BTN3` rota el volumen del buzzer y `BTN4` reinicia inmediatamente la actividad con puntuación y racha en cero. Cuando el juego reconoce una seña, devuelve `BIEN` al ESP32 (LED verde y melodía); al detectar un error, devuelve `MAL` (LED rojo y tono grave). Tras la primera autorización USB, el navegador vuelve a conectar automáticamente el ESP32 al abrir la aplicación. Web Serial requiere Chrome o Edge en Windows, macOS, Linux o ChromeOS; en una tableta Android se necesitaría la alternativa Wi-Fi/WebUSB. Los navegadores no permiten apagar físicamente una tableta desde una web ni modificar su volumen general.
+El juego no reproduce sonidos por los parlantes de la pantalla: toda la retroalimentación sonora sale del buzzer ESP32. Al abrir `/game` se muestra la portada y espera `BTN1` (**START**). Durante la partida, el mismo `BTN1` la termina y muestra “Gracias por jugar”; `BTN2` pasa a la siguiente seña correcta, `BTN3` cambia **SONIDO: SÍ/NO** y `BTN4` reinicia puntuación y racha. Con sonido apagado los LEDs siguen indicando acierto/error, pero el buzzer no recibe tonos.
+
+### ESP32 por Wi-Fi (tableta sin cable)
+
+En la aplicación publicada con HTTPS, el juego usa automáticamente Wi-Fi. Sube una vez [`hardware/rimaymaki_esp32_wifi.ino`](hardware/rimaymaki_esp32_wifi.ino) por USB, edita `WIFI_SSID`, `WIFI_PASSWORD`, `API_URL`, `DEVICE_ID` y `DEVICE_TOKEN`, y después alimenta la placa solo desde un cargador USB de 5 V. La tableta puede abrir el juego en cualquier navegador moderno; si ambos usan la misma red Wi-Fi también funcionará, aunque la comunicación viaja de forma segura por Render.
+
+En Render, agrega una variable de entorno `ESP32_DEVICE_TOKEN` con exactamente el mismo valor definido en `DEVICE_TOKEN`. No publiques una clave real en GitHub. El ejemplo trae una clave de demostración que debes reemplazar antes de usarlo fuera de pruebas. Para conservar la conexión USB local existe [`hardware/rimaymaki_esp32.ino`](hardware/rimaymaki_esp32.ino); abre `/game?transport=usb` en un navegador compatible con Web Serial.
 
 ## Entrenamiento compartido con GitHub
 
