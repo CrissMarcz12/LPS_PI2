@@ -1,0 +1,7 @@
+{
+  "label": "I",
+  "sample_count": 2120,
+  "sequence_length": 20,
+  "feature_size": 63,
+  "pipeline": "static-frame-v2"
+}
