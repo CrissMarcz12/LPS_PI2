@@ -1,6 +1,6 @@
 {
   "label": "B",
-  "sample_count": 820,
+  "sample_count": 1460,
   "sequence_length": 20,
   "feature_size": 63,
   "pipeline": "static-frame-v2"
