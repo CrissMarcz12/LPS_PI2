@@ -1,6 +1,5 @@
 const $ = id => document.getElementById(id);
 const SENSITIVITIES = [
-  { id: "precise", label: "PRECISA" },
   { id: "normal", label: "NORMAL" },
   { id: "flexible", label: "FLEXIBLE" },
 ];
@@ -16,7 +15,7 @@ function updateBuzzerHud() {
 
 function updateSensitivityHud() {
   const control = $("sensitivity-toggle");
-  const option = SENSITIVITIES.find(item => item.id === sensitivity) || SENSITIVITIES[1];
+  const option = SENSITIVITIES.find(item => item.id === sensitivity) || SENSITIVITIES[0];
   if (control) {
     control.innerHTML = `<em>SENSIBILIDAD</em><b>${option.label}</b>`;
     control.setAttribute("aria-label", `Sensibilidad ${option.label}. Toca para cambiar.`);

@@ -79,7 +79,6 @@ class GamePipelineTests(unittest.TestCase):
 
     def test_sensitivity_uses_distinct_recognition_thresholds(self):
         controller = GameController(Path(tempfile.mkdtemp()), SEQUENCE_LENGTH)
-        self.assertEqual(controller._confidence_threshold("precise"), .80)
         self.assertEqual(controller._confidence_threshold("normal"), CONFIDENCE_THRESHOLD)
         self.assertEqual(controller._confidence_threshold("flexible"), .55)
 

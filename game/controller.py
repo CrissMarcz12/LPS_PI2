@@ -89,9 +89,6 @@ class GameController:
         # margen más amable evita rechazar manos correctas de distintos tamaños.
         base = 0.48 if self.classifier and len(self.classifier.models) == 1 else CONFIDENCE_THRESHOLD
         modes = {
-            # Precisa evita confundir letras parecidas; Flexible admite más
-            # variación de la misma mano sin aceptar un fotograma accidental.
-            "precise": max(base, 0.80),
             "normal": base,
             "flexible": min(base, 0.55 if base >= CONFIDENCE_THRESHOLD else 0.42),
         }
