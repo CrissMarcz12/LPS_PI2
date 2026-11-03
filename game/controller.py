@@ -29,7 +29,8 @@ class GameController:
                 try:
                     # El juego normal usa MediaPipe en la tableta y solo recibe
                     # landmarks; así evitamos enviar JPEGs pesados al servidor.
-                    self.classifier = AvailableLettersClassifier(models, CONFIDENCE_THRESHOLD, PREDICTION_HISTORY_SIZE, STABLE_FRAMES_REQUIRED)
+                    initial_threshold = 0.45 if len(models) == 1 else 0.625
+                    self.classifier = AvailableLettersClassifier(models, initial_threshold, PREDICTION_HISTORY_SIZE, STABLE_FRAMES_REQUIRED)
                 except Exception:
                     self.error = "No se pudo iniciar el reconocimiento de cámara."
             return self.payload()
