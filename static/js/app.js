@@ -77,11 +77,13 @@ async function advanceRound() {
   if (state.result === "completed") { apply(state); return; }
   await safely(startRecognition);
 }
-document.querySelector("#start-button").addEventListener("click", startActivity);
+document.querySelector("#start-button").addEventListener("click", async () => { if (!document.fullscreenElement) await enterFullscreen(); await startActivity(); });
 document.querySelector("#next").addEventListener("click", advanceRound);
 const fullscreen = document.querySelector("#fullscreen");
-async function toggleFullscreen() { const stage = document.querySelector("#camera-stage"); try { if (document.fullscreenElement) await document.exitFullscreen(); else if (stage.requestFullscreen) await stage.requestFullscreen(); else stage.webkitRequestFullscreen?.(); } catch (error) { console.warn("No se pudo activar pantalla completa", error); } }
+async function enterFullscreen() { const surface = document.documentElement; try { if (surface.requestFullscreen) await surface.requestFullscreen(); else surface.webkitRequestFullscreen?.(); } catch (error) { console.warn("No se pudo activar pantalla completa", error); } }
+async function toggleFullscreen() { if (document.fullscreenElement) await document.exitFullscreen(); else await enterFullscreen(); }
 fullscreen.addEventListener("click", toggleFullscreen);
+document.querySelector("#start-fullscreen").addEventListener("click", toggleFullscreen);
 document.addEventListener("fullscreenchange", () => { const active = Boolean(document.fullscreenElement); document.body.classList.toggle("immersive", active); fullscreen.textContent = active ? "×" : "⛶"; fullscreen.setAttribute("aria-label", active ? "Salir de pantalla completa" : "Activar pantalla completa"); });
 async function hardwareAction(action) {
   if (action === "start") {
