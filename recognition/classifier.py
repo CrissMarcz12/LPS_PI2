@@ -29,6 +29,10 @@ class LetterModel:
     def _distance(self, samples: np.ndarray) -> np.ndarray:
         normalized = (samples - self.center_) / self.scale_
         return np.sqrt(np.mean(normalized * normalized, axis=1))
+    def raw_distance(self, samples: np.ndarray) -> np.ndarray:
+        """Distancia comparable entre letras, sin el límite propio de cada una."""
+        difference = samples - self.center_
+        return np.sqrt(np.mean(difference * difference, axis=1))
     def score(self, samples: np.ndarray) -> np.ndarray:
         return np.exp(-0.3 * np.square(self._distance(samples) / self.limit_))
 
@@ -65,8 +69,18 @@ class AvailableLettersClassifier:
     def predict(self, features: np.ndarray) -> Prediction:
         if not self.models:
             return Prediction(None, 0.0, False)
-        scores = {label: float(model.score(features.reshape(1, -1))[0]) for label, model in self.models.items()}
-        label, confidence = max(scores.items(), key=lambda item: item[1])
+        vector = features.reshape(1, -1)
+        # Los puntajes anteriores se normalizaban con el límite de cada modelo.
+        # Una letra con mucha variación (S) obtenía ventaja artificial y podía
+        # ganar contra cualquier seña. La distancia cruda usa la misma unidad
+        # para todas las letras y el margen frente a la segunda más cercana.
+        distances = {label: float(model.raw_distance(vector)[0]) for label, model in self.models.items()}
+        ordered = sorted(distances.items(), key=lambda item: item[1])
+        label, best_distance = ordered[0]
+        second_distance = ordered[1][1] if len(ordered) > 1 else best_distance + 1.0
+        margin = max(0.0, (second_distance - best_distance) / max(second_distance, 1e-6))
+        proximity = float(np.exp(-0.6 * best_distance))
+        confidence = min(1.0, proximity * (0.8 + 0.2 * margin))
         accepted = label if confidence >= self.min_confidence else None
         self.history.append((accepted, confidence))
         labels = [item[0] for item in self.history]
