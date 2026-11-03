@@ -1,10 +1,26 @@
 const $ = id => document.getElementById(id);
+const SENSITIVITIES = [
+  { id: "precise", label: "PRECISA" },
+  { id: "normal", label: "NORMAL" },
+  { id: "flexible", label: "FLEXIBLE" },
+];
 const storedBuzzerEnabled = localStorage.getItem("rimaymaki-buzzer-enabled");
 let buzzerEnabled = storedBuzzerEnabled === null ? true : storedBuzzerEnabled === "true";
+let sensitivity = localStorage.getItem("rimaymaki-sensitivity") || "normal";
+if (!SENSITIVITIES.some(option => option.id === sensitivity)) sensitivity = "normal";
 
 function updateBuzzerHud() {
   const hud = $("game-volume");
   if (hud) hud.innerHTML = `<em>SONIDO</em>${buzzerEnabled ? "🔔" : "🔕"} <b>${buzzerEnabled ? "SÍ" : "NO"}</b>`;
+}
+
+function updateSensitivityHud() {
+  const control = $("sensitivity-toggle");
+  const option = SENSITIVITIES.find(item => item.id === sensitivity) || SENSITIVITIES[1];
+  if (control) {
+    control.innerHTML = `<em>SENSIBILIDAD</em><b>${option.label}</b>`;
+    control.setAttribute("aria-label", `Sensibilidad ${option.label}. Toca para cambiar.`);
+  }
 }
 
 export function getBuzzerEnabled() { return buzzerEnabled; }
@@ -19,9 +35,18 @@ export function toggleBuzzer() {
   updateBuzzerHud();
   return buzzerEnabled;
 }
+export function getSensitivity() { return sensitivity; }
+export function cycleSensitivity() {
+  const current = SENSITIVITIES.findIndex(option => option.id === sensitivity);
+  sensitivity = SENSITIVITIES[(current + 1) % SENSITIVITIES.length].id;
+  localStorage.setItem("rimaymaki-sensitivity", sensitivity);
+  updateSensitivityHud();
+  return sensitivity;
+}
 export function showState(name) { ["start-state","empty-state","game-state","results-state"].forEach(id => $(id).classList.toggle("hidden", id !== name)); }
 export function render(state) {
   updateBuzzerHud();
+  updateSensitivityHud();
   if (!state.target) { showState("empty-state"); return; }
   if (state.result === "completed") { renderResults(state); return; }
   showState("game-state");

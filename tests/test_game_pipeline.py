@@ -6,6 +6,7 @@ import numpy as np
 
 from config import CONFIDENCE_THRESHOLD, PREDICTION_HISTORY_SIZE, SEQUENCE_LENGTH
 from game.session import SessionState
+from game.controller import GameController
 from recognition.classifier import AvailableLettersClassifier, Prediction, available_models, save_letter_model
 
 
@@ -75,6 +76,12 @@ class GamePipelineTests(unittest.TestCase):
         session.evaluate(uncertain, CONFIDENCE_THRESHOLD, "Revisa la posición de tu pulgar.", low_confidence_limit=2)
         self.assertEqual(session.result, "incorrect")
         self.assertEqual(session.error_hint, "Revisa la posición de tu pulgar.")
+
+    def test_sensitivity_uses_distinct_recognition_thresholds(self):
+        controller = GameController(Path(tempfile.mkdtemp()), SEQUENCE_LENGTH)
+        self.assertEqual(controller._confidence_threshold("precise"), .80)
+        self.assertEqual(controller._confidence_threshold("normal"), CONFIDENCE_THRESHOLD)
+        self.assertEqual(controller._confidence_threshold("flexible"), .55)
 
 
 if __name__ == "__main__":

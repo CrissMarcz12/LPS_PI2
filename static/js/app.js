@@ -2,7 +2,7 @@ import { getSession, nextRound, restartGame, retryRound, sendLandmarks } from ".
 import { ArduinoBridge } from "./arduino.js?v=4";
 import { WifiBridge } from "./wifi-bridge.js?v=2";
 import { LocalHandCamera } from "./recognition.js";
-import { cameraReady, getBuzzerEnabled, render, setBuzzerEnabled, showState, toggleBuzzer } from "./ui.js?v=4";
+import { cameraReady, cycleSensitivity, getBuzzerEnabled, getSensitivity, render, setBuzzerEnabled, showState, toggleBuzzer } from "./ui.js?v=5";
 
 let camera, autoRetryTimer, autoNextTimer, lastArduinoFeedback, gameActive = false;
 let arduino;
@@ -21,7 +21,7 @@ function apply(state) {
   // La cámara sigue visible debajo de la celebración; solo se detiene al terminar la sesión.
   if (state.result === "completed") camera?.stop();
   if (state.result === "incorrect" && !autoRetryTimer) {
-    autoRetryTimer = setTimeout(async () => { autoRetryTimer = null; const next = await safely(retryRound); if (next) apply(next); }, 850);
+    autoRetryTimer = setTimeout(async () => { autoRetryTimer = null; const next = await safely(retryRound); if (next) apply(next); }, 1250);
   } else if (state.result !== "incorrect" && autoRetryTimer) { clearTimeout(autoRetryTimer); autoRetryTimer = null; }
   if (state.result === "correct" && !autoNextTimer) {
     // Deja visible la animación de logro y continúa solo con la siguiente letra.
@@ -31,7 +31,8 @@ function apply(state) {
 async function startRecognition() {
   const state = await getSession(); apply(state); if (!state.target) return;
   camera?.stop();
-  camera = new LocalHandCamera(document.querySelector("#camera"), document.querySelector("#landmarks"), apply, () => cameraReady(false, "No pudimos usar la cámara. Permite el acceso e inténtalo otra vez."), sendLandmarks, state.recognitionIntervalMs || 100);
+  const sendWithSensitivity = payload => sendLandmarks({ ...payload, sensitivity: getSensitivity() });
+  camera = new LocalHandCamera(document.querySelector("#camera"), document.querySelector("#landmarks"), apply, () => cameraReady(false, "No pudimos usar la cámara. Permite el acceso e inténtalo otra vez."), sendWithSensitivity, state.recognitionIntervalMs || 100);
   const active = await camera.start(); cameraReady(active, active ? "Cámara activa · detectando mano" : "Cámara no disponible");
 }
 async function safely(action) { try { return await action(); } catch (error) { console.error(error); cameraReady(false, "No pudimos conectar con el reconocimiento."); return null; } }
@@ -79,6 +80,7 @@ async function advanceRound() {
 }
 document.querySelector("#start-button").addEventListener("click", async () => { if (!document.fullscreenElement) await enterFullscreen(); await startActivity(); });
 document.querySelector("#next").addEventListener("click", advanceRound);
+document.querySelector("#sensitivity-toggle").addEventListener("click", cycleSensitivity);
 const fullscreen = document.querySelector("#fullscreen");
 async function enterFullscreen() { const surface = document.documentElement; try { if (surface.requestFullscreen) await surface.requestFullscreen(); else surface.webkitRequestFullscreen?.(); } catch (error) { console.warn("No se pudo activar pantalla completa", error); } }
 async function toggleFullscreen() { if (document.fullscreenElement) await document.exitFullscreen(); else await enterFullscreen(); }

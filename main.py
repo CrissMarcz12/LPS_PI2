@@ -100,7 +100,9 @@ def create_app() -> Flask:
             points = data.get("landmarks", [])
             if not isinstance(features, list) or not isinstance(points, list):
                 raise ValueError("Los datos de la mano no son válidos.")
-            return jsonify(controller().submit_landmarks(features, points, bool(data.get("handDetected", False))))
+            return jsonify(controller().submit_landmarks(
+                features, points, bool(data.get("handDetected", False)), str(data.get("sensitivity", "normal"))
+            ))
         except ValueError as exc:
             return jsonify({"message": str(exc)}), 400
 
