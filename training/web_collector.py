@@ -25,7 +25,10 @@ class BrowserTrainingCollector:
         self.preview_classifier = self._make_preview_classifier()
 
     def _make_preview_classifier(self) -> AvailableLettersClassifier | None:
-        models = available_models(MODELS_DIR, SEQUENCE_LENGTH)
+        models = {
+            label: model for label, model in available_models(MODELS_DIR, SEQUENCE_LENGTH).items()
+            if sample_count(label) > 0
+        }
         # Mismo umbral fijo que emplea el juego: la prueba del entrenador debe
         # anticipar exactamente lo que verá el niño, no ser más estricta.
         threshold = 0.45 if len(models) == 1 else 0.625

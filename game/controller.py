@@ -6,6 +6,7 @@ from config import (DEBUG_MODE, DRAW_LANDMARKS, LOW_CONFIDENCE_FRAMES_REQUIRED,
                     PREDICTION_HISTORY_SIZE, RECOGNITION_FPS, STABLE_FRAMES_REQUIRED)
 from recognition.classifier import AvailableLettersClassifier, Prediction, available_models
 from recognition.service import StaticHandRecognizer
+from training.storage import sample_count
 from .session import SessionState
 
 class GameController:
@@ -19,7 +20,10 @@ class GameController:
 
     def start(self) -> dict:
         with self._lock:
-            models = available_models(self.model_root, self.sequence_length)
+            models = {
+                label: model for label, model in available_models(self.model_root, self.sequence_length).items()
+                if sample_count(label) > 0
+            }
             # Una ronda por cada letra entrenada: A, B, C… sin repeticiones.
             self.state = SessionState(tuple(models), len(models))
             self.error = None

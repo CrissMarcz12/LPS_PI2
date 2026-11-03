@@ -65,7 +65,12 @@ def sample_count(label: str) -> int:
 def all_counts() -> dict[str, int]:
     if not DATASETS_DIR.exists():
         return {}
-    return {directory.name: len(list(directory.glob("*.npz"))) for directory in DATASETS_DIR.iterdir() if directory.is_dir()}
+    return {
+        directory.name: count
+        for directory in DATASETS_DIR.iterdir() if directory.is_dir()
+        for count in [len(list(directory.glob("*.npz")))]
+        if count > 0
+    }
 
 
 def save_sample(label: str, features: np.ndarray) -> Path:
@@ -76,6 +81,8 @@ def save_sample(label: str, features: np.ndarray) -> Path:
         raise ValueError("La secuencia no tiene la longitud esperada.")
     destination = DATASETS_DIR / label
     destination.mkdir(parents=True, exist_ok=True)
+    # Si antes se borró la letra, una captura nueva la vuelve a habilitar.
+    (destination / ".rimaymaki-cleared").unlink(missing_ok=True)
     path = destination / f"{datetime.now():%Y%m%d_%H%M%S}_{uuid4().hex}.npz"
     np.savez_compressed(path, features=values)
     return path
@@ -116,3 +123,24 @@ def clear_samples(label: str) -> int:
     if directory.exists() and not any(directory.iterdir()):
         directory.rmdir()
     return len(files)
+
+
+def clear_training(label: str) -> tuple[int, bool]:
+    """Elimina muestras y modelo local, conservando la imagen de referencia.
+
+    Los marcadores evitan que initialize_storage vuelva a copiar los ejemplos
+    incluidos en el repositorio al reiniciar el servidor local.
+    """
+    label = normalize_label(label)
+    removed = clear_samples(label)
+    samples_dir = DATASETS_DIR / label
+    samples_dir.mkdir(parents=True, exist_ok=True)
+    (samples_dir / ".rimaymaki-cleared").touch()
+
+    model_dir = MODELS_DIR / label
+    had_model = model_dir.exists()
+    if model_dir.exists():
+        shutil.rmtree(model_dir)
+    model_dir.mkdir(parents=True, exist_ok=True)
+    (model_dir / ".rimaymaki-cleared").touch()
+    return removed, had_model

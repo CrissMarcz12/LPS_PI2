@@ -5,7 +5,7 @@ import threading
 
 from config import MIN_SAMPLES_PER_CLASS, MODELS_DIR, RECOGNITION_FPS, SEQUENCE_LENGTH
 from recognition.classifier import save_letter_model
-from .storage import (all_counts, clear_samples, load_static_frame_samples,
+from .storage import (all_counts, clear_training, load_static_frame_samples,
                       normalize_label, sample_count, save_reference)
 from .web_collector import BrowserTrainingCollector
 
@@ -27,16 +27,12 @@ class TrainingController:
 
     def submit_frame(self, client_id: str, image_bytes: bytes) -> dict:
         with self._lock:
-            collector = self.collectors.get(client_id)
-            if collector is None:
-                raise RuntimeError("Configura primero la letra de entrenamiento.")
+            collector = self.collectors.setdefault(client_id, BrowserTrainingCollector())
             return collector.process(image_bytes)
 
     def submit_landmarks(self, client_id: str, features: list[float], hand_detected: bool) -> dict:
         with self._lock:
-            collector = self.collectors.get(client_id)
-            if collector is None:
-                raise RuntimeError("Configura primero la etiqueta de entrenamiento.")
+            collector = self.collectors.setdefault(client_id, BrowserTrainingCollector())
             if not hand_detected:
                 collector.sequence.clear()
                 return {"handDetected": False, "framesCollected": 0, "saved": False,
@@ -60,7 +56,10 @@ class TrainingController:
     def clear(self, label: str) -> dict:
         with self._lock:
             label = normalize_label(label)
-            return {"removed": clear_samples(label), "sampleCount": 0}
+            removed, model_removed = clear_training(label)
+            for collector in self.collectors.values():
+                collector.refresh_preview_model()
+            return {"removed": removed, "modelRemoved": model_removed, "sampleCount": 0}
 
     def save_reference(self, label: str, image_bytes: bytes) -> dict:
         with self._lock:
