@@ -1,6 +1,6 @@
 import { getSession, nextRound, restartGame, retryRound, sendLandmarks } from "./game.js";
 import { LocalHandCamera } from "./recognition.js";
-import { cameraReady, cycleSensitivity, getSensitivity, render, showState } from "./ui.js?v=6";
+import { cameraReady, render, showState } from "./ui.js?v=7";
 
 let camera, autoRetryTimer, autoNextTimer, gameActive = false;
 function apply(state) {
@@ -21,8 +21,7 @@ function apply(state) {
 async function startRecognition() {
   const state = await getSession(); apply(state); if (!state.target) return;
   camera?.stop();
-  const sendWithSensitivity = payload => sendLandmarks({ ...payload, sensitivity: getSensitivity() });
-  camera = new LocalHandCamera(document.querySelector("#camera"), document.querySelector("#landmarks"), apply, () => cameraReady(false, "No pudimos usar la cámara. Permite el acceso e inténtalo otra vez."), sendWithSensitivity, state.recognitionIntervalMs || 100);
+  camera = new LocalHandCamera(document.querySelector("#camera"), document.querySelector("#landmarks"), apply, () => cameraReady(false, "No pudimos usar la cámara. Permite el acceso e inténtalo otra vez."), sendLandmarks, state.recognitionIntervalMs || 100);
   const active = await camera.start(); cameraReady(active, active ? "Cámara activa · detectando mano" : "Cámara no disponible");
 }
 async function safely(action) { try { return await action(); } catch (error) { console.error(error); cameraReady(false, "No pudimos conectar con el reconocimiento."); return null; } }
@@ -67,7 +66,6 @@ async function advanceRound() {
 }
 document.querySelector("#start-button").addEventListener("click", async () => { if (!document.fullscreenElement) await enterFullscreen(); await startActivity(); });
 document.querySelector("#next").addEventListener("click", advanceRound);
-document.querySelector("#sensitivity-toggle").addEventListener("click", cycleSensitivity);
 const fullscreen = document.querySelector("#fullscreen");
 async function enterFullscreen() { const surface = document.documentElement; try { if (surface.requestFullscreen) await surface.requestFullscreen(); else surface.webkitRequestFullscreen?.(); } catch (error) { console.warn("No se pudo activar pantalla completa", error); } }
 async function toggleFullscreen() { if (document.fullscreenElement) await document.exitFullscreen(); else await enterFullscreen(); }

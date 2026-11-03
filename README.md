@@ -25,7 +25,7 @@ La misma etiqueta, modelo e imagen aparecen automáticamente en el juego. Las ca
 
 `/game` abre directamente en modo quiosco: solo se ve la cámara, la seña de referencia, las estrellas y la racha dentro de ella. La detección de la mano ocurre en la tableta con MediaPipe Web; al servidor se envían únicamente 63 valores de landmarks, no fotos, para mantener el vídeo y los puntos suaves.
 
-Al iniciar, toca **START**. Cuando la seña no coincide, la cámara muestra una capa roja suave y los dedos a corregir se pintan de rojo; el juego vuelve a intentarlo automáticamente. Puedes usar **NORMAL** o **FLEXIBLE** para ajustar la tolerancia del reconocimiento.
+Al iniciar, toca **START**. Cuando la seña no coincide, la cámara muestra una capa roja suave y los dedos a corregir se pintan de rojo; el juego vuelve a intentarlo automáticamente. La sensibilidad usa una tolerancia intermedia fija para reconocer con rapidez sin confundir fácilmente señas parecidas.
 
 ## Entrenamiento compartido con GitHub
 

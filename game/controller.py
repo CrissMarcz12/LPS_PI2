@@ -2,7 +2,7 @@
 from __future__ import annotations
 import threading
 import numpy as np
-from config import (CONFIDENCE_THRESHOLD, DEBUG_MODE, DRAW_LANDMARKS, LOW_CONFIDENCE_FRAMES_REQUIRED,
+from config import (DEBUG_MODE, DRAW_LANDMARKS, LOW_CONFIDENCE_FRAMES_REQUIRED,
                     PREDICTION_HISTORY_SIZE, RECOGNITION_FPS, STABLE_FRAMES_REQUIRED)
 from recognition.classifier import AvailableLettersClassifier, Prediction, available_models
 from recognition.service import StaticHandRecognizer
@@ -55,8 +55,7 @@ class GameController:
                 self.error = "No pudimos analizar la imagen de cámara."
             return self.payload()
 
-    def submit_landmarks(self, features: list[float], landmarks: list[dict[str, float]], hand_detected: bool,
-                         sensitivity: str = "normal") -> dict:
+    def submit_landmarks(self, features: list[float], landmarks: list[dict[str, float]], hand_detected: bool) -> dict:
         """Clasifica landmarks ya detectados en el navegador, sin JPEG ni MediaPipe servidor."""
         with self._lock:
             if not self.state or not self.classifier:
@@ -71,9 +70,8 @@ class GameController:
                     vector = np.asarray(features, dtype=np.float32).reshape(-1)
                     if vector.size != 63 or not np.isfinite(vector).all() or len(landmarks) != 21:
                         raise ValueError("Los landmarks recibidos no son válidos.")
-                    threshold = self._confidence_threshold(sensitivity)
-                    # predict y evaluate usan el mismo umbral para que el modo
-                    # elegido por el docente cambie realmente el reconocimiento.
+                    threshold = self._confidence_threshold()
+                    # predict y evaluate usan el mismo umbral intermedio.
                     self.classifier.min_confidence = threshold
                     prediction = self.classifier.predict(vector)
                     self.state.observe(hand_detected=True, landmarks=landmarks,
@@ -84,15 +82,10 @@ class GameController:
                 self.error = "No pudimos analizar la posición de la mano."
             return self.payload()
 
-    def _confidence_threshold(self, sensitivity: str = "normal") -> float:
-        # Con una sola seña no hay otra clase contra la cual confundirla. Un
-        # margen más amable evita rechazar manos correctas de distintos tamaños.
-        base = 0.48 if self.classifier and len(self.classifier.models) == 1 else CONFIDENCE_THRESHOLD
-        modes = {
-            "normal": base,
-            "flexible": min(base, 0.55 if base >= CONFIDENCE_THRESHOLD else 0.42),
-        }
-        return modes.get(sensitivity.lower(), base)
+    def _confidence_threshold(self) -> float:
+        # Tolerancia fija intermedia: suficiente para diferenciar señas
+        # parecidas y responder ágilmente con una mano bien colocada.
+        return 0.45 if self.classifier and len(self.classifier.models) == 1 else 0.625
 
     def retry(self) -> dict:
         with self._lock:
