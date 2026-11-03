@@ -16,13 +16,21 @@ from .storage import sample_count, save_sample
 
 class BrowserTrainingCollector:
     def __init__(self) -> None:
-        mp = load_mediapipe_solutions()
-        self._hands = mp.solutions.hands.Hands(False, MAX_HANDS, 1, .65, .65)
+        # La interfaz actual ya detecta la mano con MediaPipe en el navegador.
+        # El detector de Python solo se crea si alguien usa la antigua ruta de
+        # foto; así varias pestañas de entrenamiento no saturan el servidor.
+        self._hands = None
         self.sequence = LandmarkSequence(SEQUENCE_LENGTH)
         self.capturing = False
         self.label = "A"
         self._last_save = 0.0
         self.preview_classifier = self._make_preview_classifier()
+
+    def _image_detector(self):
+        if self._hands is None:
+            mp = load_mediapipe_solutions()
+            self._hands = mp.solutions.hands.Hands(False, MAX_HANDS, 1, .65, .65)
+        return self._hands
 
     def _make_preview_classifier(self) -> AvailableLettersClassifier | None:
         models = {
@@ -47,7 +55,7 @@ class BrowserTrainingCollector:
         image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
         if image is None:
             raise ValueError("La imagen de cámara no es válida.")
-        result = self._hands.process(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+        result = self._image_detector().process(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
         if not result.multi_hand_landmarks:
             self.sequence.clear()
             return {"handDetected": False, "landmarks": [], "framesCollected": 0, "saved": False, "sampleCount": sample_count(self.label), "prediction": None, "stablePrediction": None, "stable": False, "confidence": None, "modelReady": self.preview_classifier is not None}
