@@ -3,15 +3,8 @@ const SENSITIVITIES = [
   { id: "normal", label: "NORMAL" },
   { id: "flexible", label: "FLEXIBLE" },
 ];
-const storedBuzzerEnabled = localStorage.getItem("rimaymaki-buzzer-enabled");
-let buzzerEnabled = storedBuzzerEnabled === null ? true : storedBuzzerEnabled === "true";
 let sensitivity = localStorage.getItem("rimaymaki-sensitivity") || "normal";
 if (!SENSITIVITIES.some(option => option.id === sensitivity)) sensitivity = "normal";
-
-function updateBuzzerHud() {
-  const hud = $("game-volume");
-  if (hud) hud.innerHTML = `<em>SONIDO</em>${buzzerEnabled ? "🔔" : "🔕"} <b>${buzzerEnabled ? "SÍ" : "NO"}</b>`;
-}
 
 function updateSensitivityHud() {
   const control = $("sensitivity-toggle");
@@ -22,18 +15,6 @@ function updateSensitivityHud() {
   }
 }
 
-export function getBuzzerEnabled() { return buzzerEnabled; }
-export function setBuzzerEnabled(enabled) {
-  buzzerEnabled = Boolean(enabled);
-  localStorage.setItem("rimaymaki-buzzer-enabled", String(buzzerEnabled));
-  updateBuzzerHud();
-}
-export function toggleBuzzer() {
-  buzzerEnabled = !buzzerEnabled;
-  localStorage.setItem("rimaymaki-buzzer-enabled", String(buzzerEnabled));
-  updateBuzzerHud();
-  return buzzerEnabled;
-}
 export function getSensitivity() { return sensitivity; }
 export function cycleSensitivity() {
   const current = SENSITIVITIES.findIndex(option => option.id === sensitivity);
@@ -44,7 +25,6 @@ export function cycleSensitivity() {
 }
 export function showState(name) { ["start-state","empty-state","game-state","results-state"].forEach(id => $(id).classList.toggle("hidden", id !== name)); }
 export function render(state) {
-  updateBuzzerHud();
   updateSensitivityHud();
   if (!state.target) { showState("empty-state"); return; }
   if (state.result === "completed") { renderResults(state); return; }

@@ -1,23 +1,13 @@
 import { getSession, nextRound, restartGame, retryRound, sendLandmarks } from "./game.js";
-import { ArduinoBridge } from "./arduino.js?v=4";
-import { WifiBridge } from "./wifi-bridge.js?v=2";
 import { LocalHandCamera } from "./recognition.js";
-import { cameraReady, cycleSensitivity, getBuzzerEnabled, getSensitivity, render, setBuzzerEnabled, showState, toggleBuzzer } from "./ui.js?v=5";
+import { cameraReady, cycleSensitivity, getSensitivity, render, showState } from "./ui.js?v=6";
 
-let camera, autoRetryTimer, autoNextTimer, lastArduinoFeedback, gameActive = false;
-let arduino;
-const wifiMode = location.protocol === "https:" && new URLSearchParams(location.search).get("transport") !== "usb";
+let camera, autoRetryTimer, autoNextTimer, gameActive = false;
 function apply(state) {
   if (!state || typeof state !== "object") throw new Error("Respuesta inválida del servicio.");
   if (!gameActive) return;
   if (state.result === "completed") { finishActivity(state); return; }
   render(state); camera?.setCorrectionHint?.(state.result === "incorrect" ? state.errorHint : "");
-  const canNotifyArduino = Boolean(state.handDetected && camera?.handVisible);
-  if (["correct", "incorrect"].includes(state.result) && canNotifyArduino && state.result !== lastArduinoFeedback) {
-    lastArduinoFeedback = state.result;
-    // Con sonido apagado se conserva el LED, pero no se manda ningún tono.
-    arduino?.feedback(state.result, getBuzzerEnabled());
-  } else if (!["correct", "incorrect"].includes(state.result) || !canNotifyArduino) lastArduinoFeedback = null;
   // La cámara sigue visible debajo de la celebración; solo se detiene al terminar la sesión.
   if (state.result === "completed") camera?.stop();
   if (state.result === "incorrect" && !autoRetryTimer) {
@@ -41,28 +31,25 @@ function showStartScreen(finished = false, state = null) {
   document.querySelector("#start-title").textContent = finished ? "¡Gracias por jugar!" : "¡Hola, explorador!";
   document.querySelector("#start-copy").textContent = finished ? "Presiona START para comenzar una nueva aventura." : "Presiona el botón START para comenzar.";
   document.querySelector("#start-button").textContent = finished ? "JUGAR OTRA VEZ" : "START";
-  document.querySelector("#start-summary").textContent = finished && state ? `${state.score} estrellas · racha máxima ${state.maxStreak}` : "El ESP32 controla todo el juego.";
+  document.querySelector("#start-summary").textContent = finished && state ? `${state.score} estrellas · racha máxima ${state.maxStreak}` : "Practica cada seña mirando la referencia.";
 }
 function stopActivity() {
   if (autoRetryTimer) { clearTimeout(autoRetryTimer); autoRetryTimer = null; }
   if (autoNextTimer) { clearTimeout(autoNextTimer); autoNextTimer = null; }
   camera?.stop();
   gameActive = false;
-  lastArduinoFeedback = null;
   showStartScreen(true);
 }
 function finishActivity(state) {
   camera?.stop();
   if (autoNextTimer) { clearTimeout(autoNextTimer); autoNextTimer = null; }
   gameActive = false;
-  lastArduinoFeedback = null;
   showStartScreen(true, state);
 }
 async function startActivity() {
   if (autoRetryTimer) { clearTimeout(autoRetryTimer); autoRetryTimer = null; }
   if (autoNextTimer) { clearTimeout(autoNextTimer); autoNextTimer = null; }
   camera?.stop();
-  lastArduinoFeedback = null;
   const state = await safely(restartGame);
   if (!state) return;
   gameActive = true;
@@ -87,57 +74,4 @@ async function toggleFullscreen() { if (document.fullscreenElement) await docume
 fullscreen.addEventListener("click", toggleFullscreen);
 document.querySelector("#start-fullscreen").addEventListener("click", toggleFullscreen);
 document.addEventListener("fullscreenchange", () => { const active = Boolean(document.fullscreenElement); document.body.classList.toggle("immersive", active); fullscreen.textContent = active ? "×" : "⛶"; fullscreen.setAttribute("aria-label", active ? "Salir de pantalla completa" : "Activar pantalla completa"); });
-async function hardwareAction(action) {
-  if (action === "start") {
-    if (gameActive) stopActivity();
-    else await startActivity();
-  } else if (action === "next" && !document.querySelector("#next").classList.contains("hidden")) {
-    document.querySelector("#next").click();
-  } else if (action === "volume") {
-    arduino?.setBuzzerEnabled(toggleBuzzer());
-  } else if (action === "restart") {
-    await restartActivity();
-  }
-}
-const buttonAction = { BTN1: "start", BTN2: "next", BTN3: "volume", BTN4: "restart" };
-function showArduinoStatus(status) {
-  const button = document.querySelector("#arduino-connect");
-  if (!button) return;
-  if (wifiMode) {
-    const labels = { connecting: "BUSCANDO ESP32…", connected: "✓ ESP32 WIFI", disconnected: "ESP32 SIN CONEXIÓN", error: "SIN CONEXIÓN A RENDER" };
-    button.textContent = labels[status] || labels.connecting;
-    button.dataset.status = status;
-    button.title = "ESP32 conectado por Wi-Fi";
-    return;
-  }
-  const labels = { unsupported: "USB no compatible", disconnected: "CONECTAR ESP32", connecting: "CONECTANDO…", connected: "✓ ESP32", error: "REINTENTAR USB" };
-  button.textContent = labels[status] || labels.disconnected;
-  button.dataset.status = status;
-  button.title = status === "connected" ? "ESP32 conectado" : "Conectar el ESP32 por USB";
-}
-const bridgeOptions = {
-  onButton: code => hardwareAction(buttonAction[code]),
-  onSound: enabled => setBuzzerEnabled(enabled),
-  onStatus: status => {
-    showArduinoStatus(status);
-    if (status === "connected") arduino?.setBuzzerEnabled(getBuzzerEnabled());
-  },
-};
-arduino = wifiMode ? new WifiBridge(bridgeOptions) : new ArduinoBridge(bridgeOptions);
-document.querySelector("#arduino-connect").addEventListener("click", async () => {
-  try { await arduino.requestConnection(); }
-  catch (error) { console.warn("No se pudo conectar el ESP32.", error); showArduinoStatus("error"); }
-});
-// El ESP32 puede enviar BTN1…BTN4 directamente por Web Serial. Las teclas se
-// conservan para probar la interfaz sin hardware.
-document.addEventListener("keydown", async event => {
-  if (event.repeat) return;
-  const key = event.key.toLowerCase();
-  const action = ["p", "enter", " "].includes(key) ? "start" : ["n", "arrowright"].includes(key) ? "next" : ["v", "arrowup"].includes(key) ? "volume" : ["r", "arrowleft"].includes(key) ? "restart" : null;
-  if (action) {
-    event.preventDefault();
-    await hardwareAction(action);
-  }
-});
-arduino.restore().catch(() => showArduinoStatus("disconnected"));
 showStartScreen();

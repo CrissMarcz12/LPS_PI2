@@ -49,7 +49,7 @@ export class LocalHandCamera {
     this.video = video; this.landmarkCanvas = landmarkCanvas; this.onFrame = onFrame;
     this.onError = onError; this.sender = sender; this.intervalMs = intervalMs;
     this.running = false; this.inFlight = 0; this.maxInFlight = 2; this.lastSent = 0; this.lastNoHandSent = 0;
-    this.requestId = 0; this.lastRenderedRequest = 0; this.correctionHint = ""; this.handVisible = false;
+    this.requestId = 0; this.lastRenderedRequest = 0; this.correctionHint = ""; this.handVisible = false; this.lastPoints = [];
   }
   async start() {
     try {
@@ -64,11 +64,12 @@ export class LocalHandCamera {
   async process() { if (!this.running) return; try { await this.hands.send({image:this.video}); } catch (error) { this.onError(error); } if (this.running) requestAnimationFrame(() => this.process()); }
   onResults(result) {
     const raw = result.multiHandLandmarks?.[0];
-    if (!raw) { this.handVisible = false; this.drawLandmarks([]); this.sendNoHand(); return; }
+    if (!raw) { this.handVisible = false; this.lastPoints = []; this.drawLandmarks([]); this.sendNoHand(); return; }
     // La vista de cámara está espejada: se espejan también los puntos para que
     // la clasificación mantenga exactamente el mismo sistema usado al entrenar.
     this.handVisible = true;
     const points = raw.map(point => ({x:1-point.x, y:point.y, z:point.z}));
+    this.lastPoints = points;
     this.drawLandmarks(points, this.correctionHint); const now = performance.now();
     // No esperamos toda una ida y vuelta a Render para capturar la siguiente
     // lectura. Dos solicitudes pequeñas en vuelo eliminan la sensación de
@@ -83,15 +84,21 @@ export class LocalHandCamera {
     try {
       const state = await this.sender(payload);
       if (!this.running) return;
-      // No permitimos que una respuesta vieja convierta en error una cámara que
-      // ya no detecta mano (por ejemplo al taparla o detenerla).
-      if (requestId < this.requestId || (!this.handVisible && payload.handDetected)) return;
+      // Las respuestas pueden volver fuera de orden desde la nube. Antes se
+      // descartaba toda respuesta si ya había otra solicitud en vuelo; así se
+      // perdían justo los estados "correct" e "incorrect". Solo ignoramos una
+      // respuesta ya mostrada o una mano que desapareció realmente.
+      if (requestId < this.lastRenderedRequest || (!this.handVisible && payload.handDetected)) return;
       this.lastRenderedRequest = Math.max(this.lastRenderedRequest, requestId);
       this.onFrame(state);
     } catch (error) { console.error("Error al enviar landmarks", error); this.onError(error); }
     finally { this.inFlight = Math.max(0, this.inFlight - 1); }
   }
-  setCorrectionHint(hint = "") { this.correctionHint = hint; }
+  setCorrectionHint(hint = "") {
+    this.correctionHint = hint;
+    // Vuelve a pintar de inmediato la última mano, sin esperar otro frame.
+    this.drawLandmarks(this.lastPoints, hint);
+  }
   drawLandmarks(points = [], correctionHint = "") {
     const canvas=this.landmarkCanvas, width=this.video.videoWidth, height=this.video.videoHeight;
     if (!width || !height) return; canvas.width=width; canvas.height=height;
@@ -99,10 +106,19 @@ export class LocalHandCamera {
     const fingers={pulgar:[1,2,3,4],"índice":[5,6,7,8],"dedo medio":[9,10,11,12],"dedo anular":[13,14,15,16],"meñique":[17,18,19,20]};
     const highlighted=Object.entries(fingers).filter(([name])=>correctionHint.includes(name)).flatMap(([,indexes])=>indexes);
     context.lineWidth=Math.max(2,width/360); context.shadowColor="#24346d"; context.shadowBlur=4;
-    for(const [from,to] of CONNECTIONS){context.strokeStyle=highlighted.includes(from)&&highlighted.includes(to)?"#ff3f5e":"#ffffff";context.beginPath();context.moveTo(points[from].x*width,points[from].y*height);context.lineTo(points[to].x*width,points[to].y*height);context.stroke();}
-    for(const [index,point] of points.entries()){context.fillStyle=highlighted.includes(index)?"#ff3f5e":"#ffdc5d";context.beginPath();context.arc(point.x*width,point.y*height,Math.max(3,width/180),0,Math.PI*2);context.fill();} context.shadowBlur=0;
+    for(const [from,to] of CONNECTIONS){
+      const wrong=highlighted.includes(from)&&highlighted.includes(to);
+      context.strokeStyle=wrong?"#ff244d":"#ffffff";
+      context.lineWidth=wrong?Math.max(5,width/150):Math.max(2,width/360);
+      context.beginPath();context.moveTo(points[from].x*width,points[from].y*height);context.lineTo(points[to].x*width,points[to].y*height);context.stroke();
+    }
+    for(const [index,point] of points.entries()){
+      const wrong=highlighted.includes(index);
+      context.fillStyle=wrong?"#ff244d":"#ffdc5d";
+      context.beginPath();context.arc(point.x*width,point.y*height,wrong?Math.max(7,width/105):Math.max(3,width/180),0,Math.PI*2);context.fill();
+    } context.shadowBlur=0;
   }
-  stop() { this.running=false; this.handVisible=false; this.hands?.close?.(); this.hands=null; this.stream?.getTracks().forEach(track=>track.stop()); this.stream=null; this.drawLandmarks([]); }
+  stop() { this.running=false; this.handVisible=false; this.lastPoints=[]; this.hands?.close?.(); this.hands=null; this.stream?.getTracks().forEach(track=>track.stop()); this.stream=null; this.drawLandmarks([]); }
 }
 
 function normalizedVector(points) {
