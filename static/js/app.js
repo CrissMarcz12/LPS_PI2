@@ -4,7 +4,7 @@ import { WifiBridge } from "./wifi-bridge.js?v=2";
 import { LocalHandCamera } from "./recognition.js";
 import { cameraReady, getBuzzerEnabled, render, setBuzzerEnabled, showState, toggleBuzzer } from "./ui.js?v=4";
 
-let camera, autoRetryTimer, lastArduinoFeedback, gameActive = false;
+let camera, autoRetryTimer, autoNextTimer, lastArduinoFeedback, gameActive = false;
 let arduino;
 const wifiMode = location.protocol === "https:" && new URLSearchParams(location.search).get("transport") !== "usb";
 function apply(state) {
@@ -23,6 +23,10 @@ function apply(state) {
   if (state.result === "incorrect" && !autoRetryTimer) {
     autoRetryTimer = setTimeout(async () => { autoRetryTimer = null; const next = await safely(retryRound); if (next) apply(next); }, 850);
   } else if (state.result !== "incorrect" && autoRetryTimer) { clearTimeout(autoRetryTimer); autoRetryTimer = null; }
+  if (state.result === "correct" && !autoNextTimer) {
+    // Deja visible la animación de logro y continúa solo con la siguiente letra.
+    autoNextTimer = setTimeout(async () => { autoNextTimer = null; await advanceRound(); }, 1450);
+  } else if (state.result !== "correct" && autoNextTimer) { clearTimeout(autoNextTimer); autoNextTimer = null; }
 }
 async function startRecognition() {
   const state = await getSession(); apply(state); if (!state.target) return;
@@ -40,6 +44,7 @@ function showStartScreen(finished = false, state = null) {
 }
 function stopActivity() {
   if (autoRetryTimer) { clearTimeout(autoRetryTimer); autoRetryTimer = null; }
+  if (autoNextTimer) { clearTimeout(autoNextTimer); autoNextTimer = null; }
   camera?.stop();
   gameActive = false;
   lastArduinoFeedback = null;
@@ -47,12 +52,14 @@ function stopActivity() {
 }
 function finishActivity(state) {
   camera?.stop();
+  if (autoNextTimer) { clearTimeout(autoNextTimer); autoNextTimer = null; }
   gameActive = false;
   lastArduinoFeedback = null;
   showStartScreen(true, state);
 }
 async function startActivity() {
   if (autoRetryTimer) { clearTimeout(autoRetryTimer); autoRetryTimer = null; }
+  if (autoNextTimer) { clearTimeout(autoNextTimer); autoNextTimer = null; }
   camera?.stop();
   lastArduinoFeedback = null;
   const state = await safely(restartGame);
@@ -62,8 +69,16 @@ async function startActivity() {
   else apply(state);
 }
 async function restartActivity() { await startActivity(); }
+async function advanceRound() {
+  if (!gameActive) return;
+  camera?.stop();
+  const state = await safely(nextRound);
+  if (!state) return;
+  if (state.result === "completed") { apply(state); return; }
+  await safely(startRecognition);
+}
 document.querySelector("#start-button").addEventListener("click", startActivity);
-document.querySelector("#next").addEventListener("click", async () => { if (!gameActive) return; camera?.stop(); const state = await safely(nextRound); if (state?.result !== "completed") await safely(startRecognition); else if (state) apply(state); });
+document.querySelector("#next").addEventListener("click", advanceRound);
 const fullscreen = document.querySelector("#fullscreen");
 async function toggleFullscreen() { const stage = document.querySelector("#camera-stage"); try { if (document.fullscreenElement) await document.exitFullscreen(); else if (stage.requestFullscreen) await stage.requestFullscreen(); else stage.webkitRequestFullscreen?.(); } catch (error) { console.warn("No se pudo activar pantalla completa", error); } }
 fullscreen.addEventListener("click", toggleFullscreen);

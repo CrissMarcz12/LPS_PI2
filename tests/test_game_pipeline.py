@@ -38,6 +38,17 @@ class GamePipelineTests(unittest.TestCase):
         self.assertEqual(session.result, "correct")
         self.assertEqual(session.score, 100)
 
+    def test_session_practices_each_available_letter_in_order(self):
+        session = SessionState(("A", "B", "C"), 3)
+        self.assertEqual(session.target, "A")
+        self.assertEqual(session.payload()["totalRounds"], 3)
+        session.next_round()
+        self.assertEqual((session.current_round, session.target), (2, "B"))
+        session.next_round()
+        self.assertEqual((session.current_round, session.target), (3, "C"))
+        session.next_round()
+        self.assertTrue(session.completed)
+
     def test_guidance_uses_the_most_different_finger(self):
         root = Path(tempfile.mkdtemp())
         samples = np.zeros((4, 63), dtype=np.float32)

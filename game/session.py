@@ -1,6 +1,5 @@
 """Estado de una sesión; no conoce HTTP, cámara ni HTML."""
 from __future__ import annotations
-import random
 from dataclasses import dataclass
 from recognition.classifier import Prediction
 from .scoring import points_for_correct
@@ -31,7 +30,9 @@ class SessionState:
 
     def __post_init__(self) -> None:
         if self.available_letters:
-            self.target = random.choice(self.available_letters)
+            # El recorrido de aprendizaje siempre comienza por A (si está
+            # entrenada) y continúa por cada seña disponible una sola vez.
+            self.target = self.available_letters[0]
 
     @property
     def completed(self) -> bool:
@@ -104,7 +105,7 @@ class SessionState:
         self.low_confidence_frames = 0
         self.result = "waiting"
         self.awarded_points = 0
-        self.target = None if self.completed else random.choice(self.available_letters)
+        self.target = None if self.completed else self.available_letters[self.current_round - 1]
 
     def observe(self, *, hand_detected: bool, landmarks: list[dict[str, float]], frames_collected: int, prediction: Prediction) -> None:
         self.hand_detected = hand_detected

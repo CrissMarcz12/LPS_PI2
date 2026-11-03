@@ -27,6 +27,7 @@ export function render(state) {
   showState("game-state");
   $("target-letter").textContent = state.target; $("target-letter-tablet").textContent = state.target; $("detected-letter").textContent = state.prediction || "—";
   $("progress-label").textContent = `Actividad ${state.currentRound} / ${state.totalRounds}`;
+  $("round-label-tablet").textContent = `${state.currentRound} / ${state.totalRounds}`;
   $("progress-bar").style.width = `${((state.currentRound - 1) / state.totalRounds) * 100}%`;
   $("header-xp").textContent = state.score; $("header-streak").textContent = state.currentStreak;
   $("game-score").textContent = state.score; $("game-streak").textContent = state.currentStreak;

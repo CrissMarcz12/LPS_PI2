@@ -3,8 +3,7 @@ from __future__ import annotations
 import threading
 import numpy as np
 from config import (CONFIDENCE_THRESHOLD, DEBUG_MODE, DRAW_LANDMARKS, LOW_CONFIDENCE_FRAMES_REQUIRED,
-                    PREDICTION_HISTORY_SIZE, RECOGNITION_FPS,
-                    STABLE_FRAMES_REQUIRED, TOTAL_ROUNDS)
+                    PREDICTION_HISTORY_SIZE, RECOGNITION_FPS, STABLE_FRAMES_REQUIRED)
 from recognition.classifier import AvailableLettersClassifier, Prediction, available_models
 from recognition.service import StaticHandRecognizer
 from .session import SessionState
@@ -21,7 +20,8 @@ class GameController:
     def start(self) -> dict:
         with self._lock:
             models = available_models(self.model_root, self.sequence_length)
-            self.state = SessionState(tuple(models), TOTAL_ROUNDS)
+            # Una ronda por cada letra entrenada: A, B, C… sin repeticiones.
+            self.state = SessionState(tuple(models), len(models))
             self.error = None
             self.recognizer = None
             self.classifier = None
