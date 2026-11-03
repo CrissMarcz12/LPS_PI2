@@ -40,7 +40,9 @@ class TrainingController:
             if not hand_detected:
                 collector.sequence.clear()
                 return {"handDetected": False, "framesCollected": 0, "saved": False,
-                        "sampleCount": sample_count(collector.label), "prediction": None, "confidence": None}
+                        "sampleCount": sample_count(collector.label), "prediction": None,
+                        "stablePrediction": None, "stable": False, "confidence": None,
+                        "modelReady": collector.preview_classifier is not None}
             return collector.process_features(features)
 
     def train(self, label: str) -> dict:

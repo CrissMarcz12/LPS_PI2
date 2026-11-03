@@ -5,7 +5,7 @@ import time
 import cv2
 import numpy as np
 
-from config import (CONFIDENCE_THRESHOLD, MAX_HANDS, MODELS_DIR,
+from config import (MAX_HANDS, MODELS_DIR,
                     PREDICTION_HISTORY_SIZE, SAMPLE_CAPTURE_INTERVAL_SECONDS,
                     SEQUENCE_LENGTH, STABLE_FRAMES_REQUIRED)
 from features.landmarks import LandmarkSequence, normalized_hand_vector
@@ -26,7 +26,10 @@ class BrowserTrainingCollector:
 
     def _make_preview_classifier(self) -> AvailableLettersClassifier | None:
         models = available_models(MODELS_DIR, SEQUENCE_LENGTH)
-        return AvailableLettersClassifier(models, CONFIDENCE_THRESHOLD, PREDICTION_HISTORY_SIZE, STABLE_FRAMES_REQUIRED) if models else None
+        # Mismo umbral fijo que emplea el juego: la prueba del entrenador debe
+        # anticipar exactamente lo que verá el niño, no ser más estricta.
+        threshold = 0.45 if len(models) == 1 else 0.625
+        return AvailableLettersClassifier(models, threshold, PREDICTION_HISTORY_SIZE, STABLE_FRAMES_REQUIRED) if models else None
 
     def refresh_preview_model(self) -> None:
         self.preview_classifier = self._make_preview_classifier()
@@ -44,7 +47,7 @@ class BrowserTrainingCollector:
         result = self._hands.process(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
         if not result.multi_hand_landmarks:
             self.sequence.clear()
-            return {"handDetected": False, "landmarks": [], "framesCollected": 0, "saved": False, "sampleCount": sample_count(self.label), "prediction": None, "confidence": None}
+            return {"handDetected": False, "landmarks": [], "framesCollected": 0, "saved": False, "sampleCount": sample_count(self.label), "prediction": None, "stablePrediction": None, "stable": False, "confidence": None, "modelReady": self.preview_classifier is not None}
         hand = result.multi_hand_landmarks[0]
         features = normalized_hand_vector(hand)
         self.sequence.add(features)
@@ -62,7 +65,10 @@ class BrowserTrainingCollector:
             "saved": saved,
             "sampleCount": sample_count(self.label),
             "prediction": prediction.letter if prediction else None,
+            "stablePrediction": prediction.stable_letter if prediction else None,
+            "stable": prediction.stable if prediction else False,
             "confidence": round(prediction.confidence * 100, 1) if prediction and prediction.letter else None,
+            "modelReady": self.preview_classifier is not None,
         }
 
     def process_features(self, features: list[float]) -> dict:
@@ -82,5 +88,8 @@ class BrowserTrainingCollector:
             "handDetected": True, "framesCollected": self.sequence.frame_count,
             "saved": saved, "sampleCount": sample_count(self.label),
             "prediction": prediction.letter if prediction else None,
+            "stablePrediction": prediction.stable_letter if prediction else None,
+            "stable": prediction.stable if prediction else False,
             "confidence": round(prediction.confidence * 100, 1) if prediction and prediction.letter else None,
+            "modelReady": self.preview_classifier is not None,
         }

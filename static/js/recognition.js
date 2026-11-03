@@ -37,7 +37,7 @@ export class BrowserCamera {
     context.strokeStyle = "#ffffff"; context.fillStyle = "#ffdc5d"; context.lineWidth = Math.max(2, width / 360);
     context.shadowColor = "#24346d"; context.shadowBlur = 4;
     for (const [from, to] of CONNECTIONS) { context.strokeStyle = highlighted.includes(from) && highlighted.includes(to) ? "#ff3f5e" : "#ffffff"; context.beginPath(); context.moveTo(points[from].x * width, points[from].y * height); context.lineTo(points[to].x * width, points[to].y * height); context.stroke(); }
-    for (const [index, point] of points.entries()) { context.fillStyle = highlighted.includes(index) ? "#ff3f5e" : "#ffdc5d"; context.beginPath(); context.arc(point.x * width, point.y * height, Math.max(3, width / 180), 0, Math.PI * 2); context.fill(); }
+    for (const [index, point] of points.entries()) { context.fillStyle = highlighted.includes(index) ? "#ff3f5e" : "#ffdc5d"; context.beginPath(); context.arc(point.x * width, point.y * height, Math.max(2.5, width / 260), 0, Math.PI * 2); context.fill(); }
     context.shadowBlur = 0;
   }
   stop() { clearInterval(this.timer); this.timer = null; this.stream?.getTracks().forEach(track => track.stop()); this.stream = null; this.sentAt = []; this.drawLandmarks([]); }
@@ -115,7 +115,7 @@ export class LocalHandCamera {
     for(const [index,point] of points.entries()){
       const wrong=highlighted.includes(index);
       context.fillStyle=wrong?"#ff244d":"#ffdc5d";
-      context.beginPath();context.arc(point.x*width,point.y*height,wrong?Math.max(7,width/105):Math.max(3,width/180),0,Math.PI*2);context.fill();
+      context.beginPath();context.arc(point.x*width,point.y*height,wrong?Math.max(4.5,width/185):Math.max(2.5,width/260),0,Math.PI*2);context.fill();
     } context.shadowBlur=0;
   }
   stop() { this.running=false; this.handVisible=false; this.lastPoints=[]; this.hands?.close?.(); this.hands=null; this.stream?.getTracks().forEach(track=>track.stop()); this.stream=null; this.drawLandmarks([]); }
