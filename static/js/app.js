@@ -1,6 +1,6 @@
 import { completeGame, getProfiles, getSession, leaveGame, nextRound, restartGame, retryRound, saveProgress, selectProfile, sendLandmarks } from "./game.js";
 import { LocalHandCamera } from "./recognition.js";
-import { cameraReady, render, showState } from "./ui.js?v=8";
+import { cameraReady, render, showState } from "./ui.js?v=9";
 
 const THEMES = [["violet", "💜", "Violeta"], ["sky", "💙", "Azul"], ["mint", "💚", "Verde"], ["coral", "🧡", "Coral"]];
 const AVATARS = [["killa", "Killa", "🌟"], ["inti", "Inti", "☀️"], ["maki", "Maki", "🐻"], ["sumaq", "Sumaq", "🌈"]];
