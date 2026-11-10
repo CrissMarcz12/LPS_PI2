@@ -3,7 +3,7 @@ import { LocalHandCamera } from "./recognition.js";
 import { cameraReady, render, showState } from "./ui.js?v=9";
 
 const THEMES = [["violet", "💜", "Violeta"], ["sky", "💙", "Azul"], ["mint", "💚", "Verde"], ["coral", "🧡", "Coral"]];
-const AVATARS = [["killa", "Killa", "🌟"], ["inti", "Inti", "☀️"], ["maki", "Maki", "🐻"], ["sumaq", "Sumaq", "🌈"]];
+const AVATARS = [["killa", "Killa", "🌟"], ["inti", "Inti", "☀️"], ["maki", "Maki", "🐻"], ["chuybot", "ChuyBot", "/static/assets/avatars/chuybot-chullo.png"]];
 const ID_CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 let camera, autoRetryTimer, autoNextTimer, gameActive = false, savingResult = false;
 let profiles = [], selectedProfile = null, selectedAvatar = null, playerCode = "", characterIndex = -1, screenMode = "profiles", soundEnabled = true, lastSavedScore = -1;
@@ -38,7 +38,7 @@ async function startRecognition() {
 }
 function paintProfiles() {
   const grid = document.querySelector("#profile-grid");
-  grid.innerHTML = AVATARS.map(([id, name, avatar], index) => `<button type="button" class="profile-choice theme-${THEMES[index][0]}" data-avatar="${id}"><small>BOTÓN ${index + 1}</small><span class="profile-avatar">${avatar}</span><strong>${name}</strong><em>Crea o recupera tu ID</em></button>`).join("");
+  grid.innerHTML = AVATARS.map(([id, name, avatar], index) => `<button type="button" class="profile-choice theme-${THEMES[index][0]}" data-avatar="${id}"><small>BOTÓN ${index + 1}</small>${avatar.startsWith("/") ? `<img class="profile-avatar-image" src="${avatar}" alt="${name}">` : `<span class="profile-avatar">${avatar}</span>`}<strong>${name}</strong><em>Crea o recupera tu ID</em></button>`).join("");
   grid.querySelectorAll("[data-avatar]").forEach(button => button.addEventListener("click", () => chooseProfile(button.dataset.avatar)));
 }
 async function showProfileSelection() {
@@ -51,9 +51,13 @@ function chooseProfile(avatarId) {
   selectedAvatar = AVATARS.find(avatar => avatar[0] === avatarId) || null;
   if (!selectedAvatar) return;
   playerCode = ""; characterIndex = -1; screenMode = "id-entry";
-  document.querySelector("#id-avatar").textContent = selectedAvatar[2];
+  showAvatar("#id-avatar", selectedAvatar[2], selectedAvatar[1]);
   document.querySelector("#id-name").textContent = selectedAvatar[1];
   paintCode(); showState("id-state");
+}
+function showAvatar(selector, avatar, name) {
+  const element = document.querySelector(selector);
+  element.innerHTML = avatar.startsWith("/") ? `<img src="${avatar}" alt="${name}">` : avatar;
 }
 function paintCode() {
   const active = characterIndex >= 0 ? ID_CHARACTERS[characterIndex] : "•";
@@ -78,7 +82,7 @@ function eraseCharacter() {
 }
 function showCustomizer() {
   screenMode = "customize";
-  document.querySelector("#custom-avatar").textContent = selectedAvatar[2];
+  showAvatar("#custom-avatar", selectedAvatar[2], selectedAvatar[1]);
   document.querySelector("#custom-name").textContent = `${selectedAvatar[1]}-${playerCode}`;
   const themes = document.querySelector("#theme-grid");
   themes.innerHTML = THEMES.map(([id, emoji, label], index) => `<button type="button" class="theme-choice theme-${id}" data-theme="${id}"><small>BOTÓN ${index + 1}</small><span>${emoji}</span><strong>${label}</strong></button>`).join("");

@@ -7,7 +7,7 @@ from pathlib import Path
 import sqlite3
 from typing import Any
 
-AVATARS = {"killa": ("Killa", "🌟"), "inti": ("Inti", "☀️"), "maki": ("Maki", "🐻"), "sumaq": ("Sumaq", "🌈")}
+AVATARS = {"killa": ("Killa", "🌟"), "inti": ("Inti", "☀️"), "maki": ("Maki", "🐻"), "chuybot": ("ChuyBot", "/static/assets/avatars/chuybot-chullo.png")}
 THEMES = ("violet", "sky", "mint", "coral")
 
 class GameDatabase:

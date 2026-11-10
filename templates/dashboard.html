@@ -18,11 +18,12 @@
     const ranking = document.querySelector('#ranking');
     const medals = ['🥇', '🥈', '🥉', '🏅'];
     const escape = value => String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));
+    const avatar = (value, name) => String(value).startsWith('/') ? `<img class="avatar-image" src="${escape(value)}" alt="${escape(name)}">` : escape(value);
     const lastPlayed = value => value ? new Intl.DateTimeFormat('es-PE', {dateStyle: 'medium', timeStyle: 'short'}).format(new Date(value)) : 'aún no juega';
     function draw(players) {
       const ordered = [...players].sort((a, b) => a.position - b.position);
-      podium.innerHTML = ordered.slice(0, 3).map(player => `<article class="podium-player theme-${escape(player.theme)} place-${player.position}"><span class="medal">${medals[player.position - 1]}</span><span class="avatar">${escape(player.avatar)}</span><strong>${escape(player.name)}</strong><b>${player.totalScore} ⭐</b><small>Racha máxima: ${player.maxStreak} 🔥</small></article>`).join('');
-      ranking.innerHTML = ordered.map(player => `<article class="rank-row theme-${escape(player.theme)}"><span class="rank-number">${medals[player.position - 1] || '#' + player.position}</span><span class="rank-avatar">${escape(player.avatar)}</span><span class="rank-name"><b>${escape(player.name)}</b><small>${player.gamesPlayed} partidas · ${lastPlayed(player.lastPlayedAt)}</small></span><strong>${player.totalScore} <small>⭐</small></strong><em>🔥 ${player.maxStreak}</em></article>`).join('');
+      podium.innerHTML = ordered.slice(0, 3).map(player => `<article class="podium-player theme-${escape(player.theme)} place-${player.position}"><span class="medal">${medals[player.position - 1]}</span><span class="avatar">${avatar(player.avatar, player.name)}</span><strong>${escape(player.name)}</strong><b>${player.totalScore} ⭐</b><small>Racha máxima: ${player.maxStreak} 🔥</small></article>`).join('');
+      ranking.innerHTML = ordered.map(player => `<article class="rank-row theme-${escape(player.theme)}"><span class="rank-number">${medals[player.position - 1] || '#' + player.position}</span><span class="rank-avatar">${avatar(player.avatar, player.name)}</span><span class="rank-name"><b>${escape(player.name)}</b><small>${player.gamesPlayed} partidas · ${lastPlayed(player.lastPlayedAt)}</small></span><strong>${player.totalScore} <small>⭐</small></strong><em>🔥 ${player.maxStreak}</em></article>`).join('');
     }
     async function load() { const response = await fetch('/api/profiles'); const data = await response.json(); draw(data.profiles || []); }
     document.querySelector('#refresh').addEventListener('click', load); load(); setInterval(load, 3000);
