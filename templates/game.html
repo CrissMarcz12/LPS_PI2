@@ -15,9 +15,10 @@
   </header>
   <main id="app" aria-live="polite">
     <section id="start-state" class="start-state"><div class="start-orbit" aria-hidden="true"><i>★</i><i>✦</i><i>●</i></div><div class="start-brand">RM</div><p class="start-kicker">APRENDAMOS LENGUA DE SEÑAS</p><h1>RIMAY<span>MAKI</span></h1><h2>Elige tu aventurero</h2><p>Presiona uno de los cuatro botones para elegir tu avatar.</p><div id="profile-grid" class="profile-grid" aria-label="Elige un aventurero"></div><button class="start-fullscreen" type="button">⛶ PANTALLA COMPLETA</button><a class="dashboard-link" href="/dashboard">🏆 VER PODIO</a></section>
+    <section id="id-state" class="start-state hidden"><div class="start-orbit" aria-hidden="true"><i>★</i><i>✦</i><i>●</i></div><p class="start-kicker">TU IDENTIDAD DE JUEGO</p><div id="id-avatar" class="custom-avatar">🐻</div><h1 id="id-name">Maki</h1><h2>Elige tu ID</h2><p>Presiona cuatro botones. Cada número será parte de tu nombre.</p><strong id="player-code" class="player-code">• • • •</strong><p class="id-help">Ejemplo: Maki-1234. Así varios niños pueden elegir el mismo avatar.</p></section>
     <section id="customize-state" class="start-state hidden"><div class="start-orbit" aria-hidden="true"><i>★</i><i>✦</i><i>●</i></div><p class="start-kicker">PERSONALIZA TU AVENTURA</p><div id="custom-avatar" class="custom-avatar">🌟</div><h1 id="custom-name">Killa</h1><h2>Elige tu color</h2><p>Presiona un botón de color. ¡La partida empieza al elegirlo!</p><div id="theme-grid" class="theme-grid" aria-label="Elige un color"></div><button class="start-fullscreen" type="button">⛶ PANTALLA COMPLETA</button></section>
     <section id="empty-state" class="empty-state hidden"><span class="empty-icon">✦</span><p class="eyebrow">PREPARA TU PRÁCTICA</p><h1>Aún no hay modelos</h1><p>No existen letras entrenadas disponibles para jugar.</p><a class="button secondary" href="/">Volver al inicio</a></section>
-    <section id="game-state" class="hidden">
+    <section id="game-state" class="hidden"><button id="exit-game" class="exit-game" type="button">SALIR ×</button>
       <div class="progress-track"><div id="progress-bar"></div></div>
       <div class="game-layout">
         <section class="camera-panel">

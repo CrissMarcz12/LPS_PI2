@@ -9,7 +9,7 @@
 <body>
   <main class="dashboard-shell">
     <header class="dashboard-header"><a href="/game" class="back">← VOLVER AL JUEGO</a><div><p>RIMAYMAKI</p><h1>🏆 Podio de aventureros</h1></div><button id="refresh" type="button">↻ ACTUALIZAR</button></header>
-    <p class="dashboard-copy">Las estrellas y rachas se guardan al terminar cada actividad.</p>
+    <p class="dashboard-copy">Ranking en vivo: se actualiza automáticamente durante cada partida.</p>
     <section id="podium" class="podium" aria-label="Podio de jugadores"></section>
     <section class="ranking-card"><h2>Ranking general</h2><div id="ranking" class="ranking" aria-live="polite"></div></section>
   </main>
@@ -25,7 +25,7 @@
       ranking.innerHTML = ordered.map(player => `<article class="rank-row theme-${escape(player.theme)}"><span class="rank-number">${medals[player.position - 1] || '#' + player.position}</span><span class="rank-avatar">${escape(player.avatar)}</span><span class="rank-name"><b>${escape(player.name)}</b><small>${player.gamesPlayed} partidas · ${lastPlayed(player.lastPlayedAt)}</small></span><strong>${player.totalScore} <small>⭐</small></strong><em>🔥 ${player.maxStreak}</em></article>`).join('');
     }
     async function load() { const response = await fetch('/api/profiles'); const data = await response.json(); draw(data.profiles || []); }
-    document.querySelector('#refresh').addEventListener('click', load); load();
+    document.querySelector('#refresh').addEventListener('click', load); load(); setInterval(load, 3000);
   </script>
 </body>
 </html>

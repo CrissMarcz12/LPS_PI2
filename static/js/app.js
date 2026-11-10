@@ -1,10 +1,11 @@
-import { completeGame, getProfiles, getSession, nextRound, restartGame, retryRound, selectProfile, sendLandmarks } from "./game.js";
+import { completeGame, getProfiles, getSession, leaveGame, nextRound, restartGame, retryRound, saveProgress, selectProfile, sendLandmarks } from "./game.js";
 import { LocalHandCamera } from "./recognition.js";
 import { cameraReady, render, showState } from "./ui.js?v=8";
 
 const THEMES = [["violet", "💜", "Violeta"], ["sky", "💙", "Azul"], ["mint", "💚", "Verde"], ["coral", "🧡", "Coral"]];
+const AVATARS = [["killa", "Killa", "🌟"], ["inti", "Inti", "☀️"], ["maki", "Maki", "🐻"], ["sumaq", "Sumaq", "🌈"]];
 let camera, autoRetryTimer, autoNextTimer, gameActive = false, savingResult = false;
-let profiles = [], selectedProfile = null, screenMode = "profiles", soundEnabled = true;
+let profiles = [], selectedProfile = null, selectedAvatar = null, playerCode = "", screenMode = "profiles", soundEnabled = true, lastSavedScore = -1;
 
 function clearTimers() {
   if (autoRetryTimer) { clearTimeout(autoRetryTimer); autoRetryTimer = null; }
@@ -18,6 +19,7 @@ function apply(state) {
   if (!state || typeof state !== "object") throw new Error("Respuesta inválida del servicio.");
   if (!gameActive) return;
   if (state.result === "completed") { finishActivity(state); return; }
+  if (state.score !== lastSavedScore) { lastSavedScore = state.score; safely(() => saveProgress(state)); }
   render(state); camera?.setCorrectionHint?.(state.result === "incorrect" ? state.errorHint : "");
   if (state.result === "incorrect" && !autoRetryTimer) {
     autoRetryTimer = setTimeout(async () => { autoRetryTimer = null; const next = await safely(retryRound); if (next) apply(next); }, 650);
@@ -35,8 +37,8 @@ async function startRecognition() {
 }
 function paintProfiles() {
   const grid = document.querySelector("#profile-grid");
-  grid.innerHTML = profiles.map((profile, index) => `<button type="button" class="profile-choice theme-${profile.theme}" data-profile="${profile.id}"><small>BOTÓN ${index + 1}</small><span class="profile-avatar">${profile.avatar}</span><strong>${profile.name}</strong><em>⭐ ${profile.totalScore} · 🔥 ${profile.maxStreak}</em></button>`).join("");
-  grid.querySelectorAll("[data-profile]").forEach(button => button.addEventListener("click", () => chooseProfile(button.dataset.profile)));
+  grid.innerHTML = AVATARS.map(([id, name, avatar], index) => `<button type="button" class="profile-choice theme-${THEMES[index][0]}" data-avatar="${id}"><small>BOTÓN ${index + 1}</small><span class="profile-avatar">${avatar}</span><strong>${name}</strong><em>Crea o recupera tu ID</em></button>`).join("");
+  grid.querySelectorAll("[data-avatar]").forEach(button => button.addEventListener("click", () => chooseProfile(button.dataset.avatar)));
 }
 async function showProfileSelection() {
   clearTimers(); camera?.stop(); gameActive = false; savingResult = false; screenMode = "profiles";
@@ -44,20 +46,32 @@ async function showProfileSelection() {
   if (data) { profiles = data.profiles; selectedProfile = profiles.find(profile => profile.id === data.selectedProfileId) || null; }
   paintProfiles(); showState("start-state");
 }
-function chooseProfile(profileId) {
-  selectedProfile = profiles.find(profile => profile.id === profileId) || null;
-  if (!selectedProfile) return;
+function chooseProfile(avatarId) {
+  selectedAvatar = AVATARS.find(avatar => avatar[0] === avatarId) || null;
+  if (!selectedAvatar) return;
+  playerCode = ""; screenMode = "id-entry";
+  document.querySelector("#id-avatar").textContent = selectedAvatar[2];
+  document.querySelector("#id-name").textContent = selectedAvatar[1];
+  paintCode(); showState("id-state");
+}
+function paintCode() { document.querySelector("#player-code").textContent = playerCode.padEnd(4, "•").split("").join(" "); }
+function addCode(digit) {
+  if (playerCode.length >= 4) return;
+  playerCode += digit; paintCode();
+  if (playerCode.length === 4) showCustomizer();
+}
+function showCustomizer() {
   screenMode = "customize";
-  document.querySelector("#custom-avatar").textContent = selectedProfile.avatar;
-  document.querySelector("#custom-name").textContent = selectedProfile.name;
+  document.querySelector("#custom-avatar").textContent = selectedAvatar[2];
+  document.querySelector("#custom-name").textContent = `${selectedAvatar[1]}-${playerCode}`;
   const themes = document.querySelector("#theme-grid");
   themes.innerHTML = THEMES.map(([id, emoji, label], index) => `<button type="button" class="theme-choice theme-${id}" data-theme="${id}"><small>BOTÓN ${index + 1}</small><span>${emoji}</span><strong>${label}</strong></button>`).join("");
   themes.querySelectorAll("[data-theme]").forEach(button => button.addEventListener("click", () => chooseTheme(button.dataset.theme)));
   showState("customize-state");
 }
 async function chooseTheme(theme) {
-  if (!selectedProfile) return;
-  const response = await safely(() => selectProfile(selectedProfile.id, theme));
+  if (!selectedAvatar || playerCode.length !== 4) return;
+  const response = await safely(() => selectProfile(selectedAvatar[0], playerCode, theme));
   if (!response?.success) return;
   selectedProfile = response.profile; profiles = response.profiles;
   await enterFullscreen(); await startActivity();
@@ -65,12 +79,13 @@ async function chooseTheme(theme) {
 async function startActivity() {
   if (!selectedProfile) return showProfileSelection();
   clearTimers(); camera?.stop();
+  lastSavedScore = -1;
   const state = await safely(restartGame);
   if (!state) return;
   gameActive = true; screenMode = "game";
   if (state.target) await safely(startRecognition); else apply(state);
 }
-function stopActivity() { clearTimers(); camera?.stop(); gameActive = false; showProfileSelection(); }
+async function stopActivity() { clearTimers(); camera?.stop(); gameActive = false; const saved = await safely(leaveGame); if (saved?.profiles) profiles = saved.profiles; showProfileSelection(); }
 async function finishActivity(state) {
   if (savingResult) return;
   savingResult = true; gameActive = false; clearTimers(); camera?.stop();
@@ -89,7 +104,8 @@ async function advanceRound() {
 // El puente físico (Bluetooth o Serial) solo debe llamar press(1..4).
 window.RimayMakiControls = { press(buttonNumber) {
   const button = Number(buttonNumber);
-  if (screenMode === "profiles") return chooseProfile(profiles[button - 1]?.id);
+  if (screenMode === "profiles") return chooseProfile(AVATARS[button - 1]?.[0]);
+  if (screenMode === "id-entry") return addCode(button);
   if (screenMode === "customize") return chooseTheme(THEMES[button - 1]?.[0]);
   if (!gameActive) return;
   if (button === 1) stopActivity();
@@ -103,6 +119,7 @@ const fullscreen = document.querySelector("#fullscreen");
 async function enterFullscreen() { const surface = document.documentElement; try { if (surface.requestFullscreen) await surface.requestFullscreen(); else surface.webkitRequestFullscreen?.(); } catch (error) { console.warn("No se pudo activar pantalla completa", error); } }
 async function toggleFullscreen() { if (document.fullscreenElement) await document.exitFullscreen(); else await enterFullscreen(); }
 fullscreen.addEventListener("click", toggleFullscreen);
+document.querySelector("#exit-game").addEventListener("click", stopActivity);
 document.querySelectorAll(".start-fullscreen").forEach(button => button.addEventListener("click", toggleFullscreen));
 document.querySelector("#play-again").addEventListener("click", showProfileSelection);
 document.addEventListener("fullscreenchange", () => { const active = Boolean(document.fullscreenElement); document.body.classList.toggle("immersive", active); fullscreen.textContent = active ? "×" : "⛶"; fullscreen.setAttribute("aria-label", active ? "Salir de pantalla completa" : "Activar pantalla completa"); });

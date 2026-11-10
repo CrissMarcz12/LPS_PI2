@@ -108,8 +108,20 @@ def create_app() -> Flask:
     def select_profile():
         data = request.get_json(silent=True) or {}
         try:
-            profile = database.choose_profile(str(data.get("profileId", "")), str(data.get("theme", "")))
+            profile = database.choose_profile(str(data.get("avatarId", "")), str(data.get("code", "")), str(data.get("theme", "")))
             session["rimaymaki_profile_id"] = profile["id"]
+            return jsonify({"success": True, "profile": profile, "profiles": database.profiles()})
+        except ValueError as exc:
+            return jsonify({"success": False, "message": str(exc)}), 400
+
+    @app.post("/api/game/progress")
+    def game_progress():
+        profile_id = session.get("rimaymaki_profile_id")
+        data = request.get_json(silent=True) or {}
+        if not profile_id:
+            return jsonify({"success": False, "message": "Elige un aventurero antes de jugar."}), 400
+        try:
+            profile = database.update_progress(str(profile_id), data)
             return jsonify({"success": True, "profile": profile, "profiles": database.profiles()})
         except ValueError as exc:
             return jsonify({"success": False, "message": str(exc)}), 400
@@ -122,6 +134,20 @@ def create_app() -> Flask:
         state = controller().completed_once()
         if state is None:
             return jsonify({"success": True, "saved": False, "profile": database.profile(profile_id), "profiles": database.profiles()})
+        try:
+            profile = database.record_game(str(profile_id), state)
+            return jsonify({"success": True, "saved": True, "profile": profile, "profiles": database.profiles()})
+        except ValueError as exc:
+            return jsonify({"success": False, "message": str(exc)}), 400
+
+    @app.post("/api/game/leave")
+    def leave_game():
+        profile_id = session.get("rimaymaki_profile_id")
+        if not profile_id:
+            return jsonify({"success": False, "message": "Elige un aventurero antes de jugar."}), 400
+        state = controller().finish_once()
+        if state is None:
+            return jsonify({"success": True, "saved": False, "profiles": database.profiles()})
         try:
             profile = database.record_game(str(profile_id), state)
             return jsonify({"success": True, "saved": True, "profile": profile, "profiles": database.profiles()})

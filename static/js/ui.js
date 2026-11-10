@@ -1,5 +1,5 @@
 const $ = id => document.getElementById(id);
-export function showState(name) { ["start-state","customize-state","empty-state","game-state","results-state"].forEach(id => $(id).classList.toggle("hidden", id !== name)); }
+export function showState(name) { ["start-state","id-state","customize-state","empty-state","game-state","results-state"].forEach(id => $(id).classList.toggle("hidden", id !== name)); }
 export function render(state, saved = null) {
   if (state.result === "completed") { renderResults(state, saved); return; }
   if (!state.target) { showState("empty-state"); return; }

@@ -118,6 +118,14 @@ class GameController:
             self._completion_recorded = True
             return self.payload()
 
+    def finish_once(self) -> dict | None:
+        """Cierra una partida incompleta desde el botón Salir y la guarda una vez."""
+        with self._lock:
+            if not self.state or self._completion_recorded:
+                return None
+            self._completion_recorded = True
+            return self.payload()
+
     def payload(self) -> dict:
         if not self.state:
             return {"result": "not_started", "message": "Inicia una partida."}
