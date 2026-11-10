@@ -3,7 +3,7 @@ import { LocalHandCamera } from "./recognition.js";
 import { cameraReady, render, showState } from "./ui.js?v=9";
 
 const THEMES = [["violet", "💜", "Violeta"], ["sky", "💙", "Azul"], ["mint", "💚", "Verde"], ["coral", "🧡", "Coral"]];
-const AVATARS = [["killa", "Killa", "🌟"], ["inti", "Inti", "☀️"], ["maki", "Maki", "🐻"], ["chuybot", "ChuyBot", "/static/assets/avatars/chuybot-chullo.png"]];
+const AVATARS = [["robo", "Robo", "/static/assets/avatars/robot-base.png"], ["llamabot", "LlamaBot", "/static/assets/avatars/robot-llama.png"], ["navibot", "NaviBot", "/static/assets/avatars/robot-navidad.png"], ["perubot", "PeruBot", "/static/assets/avatars/robot-peru.png"]];
 const ID_CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 let camera, autoRetryTimer, autoNextTimer, gameActive = false, savingResult = false;
 let profiles = [], selectedProfile = null, selectedAvatar = null, playerCode = "", characterIndex = -1, screenMode = "profiles", soundEnabled = true, lastSavedScore = -1;
