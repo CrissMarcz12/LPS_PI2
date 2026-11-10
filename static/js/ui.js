@@ -1,8 +1,8 @@
 const $ = id => document.getElementById(id);
-export function showState(name) { ["start-state","empty-state","game-state","results-state"].forEach(id => $(id).classList.toggle("hidden", id !== name)); }
-export function render(state) {
+export function showState(name) { ["start-state","customize-state","empty-state","game-state","results-state"].forEach(id => $(id).classList.toggle("hidden", id !== name)); }
+export function render(state, saved = null) {
+  if (state.result === "completed") { renderResults(state, saved); return; }
   if (!state.target) { showState("empty-state"); return; }
-  if (state.result === "completed") { renderResults(state); return; }
   showState("game-state");
   $("target-letter").textContent = state.target; $("target-letter-tablet").textContent = state.target; $("detected-letter").textContent = state.prediction || "—";
   $("progress-label").textContent = `Actividad ${state.currentRound} / ${state.totalRounds}`;
@@ -48,5 +48,12 @@ export function render(state) {
   };
   [title.textContent, text.textContent] = copy[state.result] || copy.waiting;
 }
-function renderResults(state) { showState("results-state"); [["final-score",state.score],["final-correct",state.correctAnswers],["final-wrong",state.wrongAnswers],["final-streak",state.maxStreak],["final-accuracy",`${state.accuracy}%`]].forEach(([id,value]) => $(id).textContent=value); }
+function renderResults(state, saved = null) {
+  showState("results-state");
+  [["final-score",state.score],["final-correct",state.correctAnswers],["final-wrong",state.wrongAnswers],["final-streak",state.maxStreak],["final-accuracy",`${state.accuracy}%`]].forEach(([id,value]) => $(id).textContent=value);
+  const profile = saved?.profile;
+  $("result-profile").textContent = profile ? `${profile.avatar} ${profile.name}` : "";
+  $("result-ranking").textContent = profile ? `Posición actual: #${profile.position} · ${profile.totalScore} estrellas acumuladas` : "Guardando resultado…";
+  $("ranking-list").innerHTML = (saved?.profiles || []).slice(0, 4).map(player => `<li class="theme-${player.theme}"><span>#${player.position} ${player.avatar} ${player.name}</span><b>${player.totalScore} ⭐</b></li>`).join("");
+}
 export function cameraReady(active, message) { $("camera-dot").classList.toggle("active", active); $("camera-label").textContent = message; $("camera-message").classList.toggle("hidden", active); if (!active) $("camera-message").textContent = message; }

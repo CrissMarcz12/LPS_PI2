@@ -7,9 +7,10 @@ import threading
 from uuid import uuid4
 import webbrowser
 from flask import Flask, abort, jsonify, redirect, render_template, request, send_file, session
-from config import MODELS_DIR, SEQUENCE_LENGTH
+from config import DATABASE_PATH, DATABASE_URL, MODELS_DIR, SEQUENCE_LENGTH
 from features.labels import normalize_label
 from game.controller import GameController
+from game.database import GameDatabase, THEMES
 from training.controller import TrainingController
 from training.storage import initialize_storage, reference_path
 
@@ -27,11 +28,14 @@ def create_app() -> Flask:
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "rimaymaki-local-development-key")
     app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
     initialize_storage()
+    database = GameDatabase(DATABASE_PATH, DATABASE_URL)
+    database.initialize()
     controllers: dict[str, GameController] = {}
     controllers_lock = threading.Lock()
     training = TrainingController()
     app.extensions["rimaymaki_controllers"] = controllers
     app.extensions["rimaymaki_training"] = training
+    app.extensions["rimaymaki_database"] = database
 
     def client_id() -> str:
         if "rimaymaki_client_id" not in session:
@@ -51,6 +55,11 @@ def create_app() -> Flask:
     @app.get("/game")
     def game():
         return render_template("game.html")
+
+    @app.get("/dashboard")
+    def dashboard():
+        """Panel local para el docente: ranking persistente de los avatares."""
+        return render_template("dashboard.html")
 
     @app.get("/api/lab/rm-7f3a/entrenar")
     def training_page():
@@ -89,6 +98,35 @@ def create_app() -> Flask:
     def restart_game():
         """Reinicia toda la actividad para el botón físico de reinicio."""
         return jsonify(controller().start())
+
+    @app.get("/api/profiles")
+    def profiles():
+        selected = session.get("rimaymaki_profile_id")
+        return jsonify({"profiles": database.profiles(), "selectedProfileId": selected})
+
+    @app.post("/api/profiles/select")
+    def select_profile():
+        data = request.get_json(silent=True) or {}
+        try:
+            profile = database.choose_profile(str(data.get("profileId", "")), str(data.get("theme", "")))
+            session["rimaymaki_profile_id"] = profile["id"]
+            return jsonify({"success": True, "profile": profile, "profiles": database.profiles()})
+        except ValueError as exc:
+            return jsonify({"success": False, "message": str(exc)}), 400
+
+    @app.post("/api/game/complete")
+    def complete_game():
+        profile_id = session.get("rimaymaki_profile_id")
+        if not profile_id:
+            return jsonify({"success": False, "message": "Elige un aventurero antes de jugar."}), 400
+        state = controller().completed_once()
+        if state is None:
+            return jsonify({"success": True, "saved": False, "profile": database.profile(profile_id), "profiles": database.profiles()})
+        try:
+            profile = database.record_game(str(profile_id), state)
+            return jsonify({"success": True, "saved": True, "profile": profile, "profiles": database.profiles()})
+        except ValueError as exc:
+            return jsonify({"success": False, "message": str(exc)}), 400
 
     @app.post("/api/next")
     def next_round():

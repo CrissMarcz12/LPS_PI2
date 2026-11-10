@@ -16,6 +16,7 @@ class GameController:
         self.recognizer: StaticHandRecognizer | None = None
         self.classifier: AvailableLettersClassifier | None = None
         self.error: str | None = None
+        self._completion_recorded = False
         self._lock = threading.Lock()
 
     def start(self) -> dict:
@@ -27,6 +28,7 @@ class GameController:
             # Una ronda por cada letra entrenada: A, B, C… sin repeticiones.
             self.state = SessionState(tuple(models), len(models))
             self.error = None
+            self._completion_recorded = False
             self.recognizer = None
             self.classifier = None
             if models:
@@ -106,6 +108,14 @@ class GameController:
                 self.state.next_round()
                 self.classifier.reset() if self.classifier else None
                 self.recognizer.reset() if self.recognizer else None
+            return self.payload()
+
+    def completed_once(self) -> dict | None:
+        """Entrega una única vez la sesión finalizada para persistirla."""
+        with self._lock:
+            if not self.state or not self.state.completed or self._completion_recorded:
+                return None
+            self._completion_recorded = True
             return self.payload()
 
     def payload(self) -> dict:

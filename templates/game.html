@@ -14,7 +14,8 @@
     <div class="hud"><span>⭐ <b id="header-xp">0</b> XP</span><span>🔥 <b id="header-streak">0</b></span></div>
   </header>
   <main id="app" aria-live="polite">
-    <section id="start-state" class="start-state"><div class="start-orbit" aria-hidden="true"><i>★</i><i>✦</i><i>●</i></div><div class="start-brand">RM</div><p class="start-kicker">APRENDAMOS LENGUA DE SEÑAS</p><h1>RIMAY<span>MAKI</span></h1><h2 id="start-title">¡Hola, explorador!</h2><p id="start-copy">Toca START para comenzar.</p><button id="start-button" class="start-button" type="button">START</button><button id="start-fullscreen" class="start-fullscreen" type="button">⛶ PANTALLA COMPLETA</button><p id="start-summary">Practica cada seña mirando la referencia.</p></section>
+    <section id="start-state" class="start-state"><div class="start-orbit" aria-hidden="true"><i>★</i><i>✦</i><i>●</i></div><div class="start-brand">RM</div><p class="start-kicker">APRENDAMOS LENGUA DE SEÑAS</p><h1>RIMAY<span>MAKI</span></h1><h2>Elige tu aventurero</h2><p>Presiona uno de los cuatro botones para elegir tu avatar.</p><div id="profile-grid" class="profile-grid" aria-label="Elige un aventurero"></div><button class="start-fullscreen" type="button">⛶ PANTALLA COMPLETA</button><a class="dashboard-link" href="/dashboard">🏆 VER PODIO</a></section>
+    <section id="customize-state" class="start-state hidden"><div class="start-orbit" aria-hidden="true"><i>★</i><i>✦</i><i>●</i></div><p class="start-kicker">PERSONALIZA TU AVENTURA</p><div id="custom-avatar" class="custom-avatar">🌟</div><h1 id="custom-name">Killa</h1><h2>Elige tu color</h2><p>Presiona un botón de color. ¡La partida empieza al elegirlo!</p><div id="theme-grid" class="theme-grid" aria-label="Elige un color"></div><button class="start-fullscreen" type="button">⛶ PANTALLA COMPLETA</button></section>
     <section id="empty-state" class="empty-state hidden"><span class="empty-icon">✦</span><p class="eyebrow">PREPARA TU PRÁCTICA</p><h1>Aún no hay modelos</h1><p>No existen letras entrenadas disponibles para jugar.</p><a class="button secondary" href="/">Volver al inicio</a></section>
     <section id="game-state" class="hidden">
       <div class="progress-track"><div id="progress-bar"></div></div>
@@ -33,9 +34,9 @@
         </aside>
       </div>
     </section>
-    <section id="results-state" class="results-card hidden"><span class="empty-icon">★</span><p class="eyebrow">SESIÓN COMPLETADA</p><h1>Terminaste tu práctica</h1><div class="final-score"><strong id="final-score">0</strong><span>XP</span></div><div class="results-grid"><p>✓ <b id="final-correct">0</b> aciertos</p><p>✕ <b id="final-wrong">0</b> errores</p><p>🔥 racha máxima: <b id="final-streak">0</b></p><p>Precisión: <b id="final-accuracy">0%</b></p></div><a class="button primary" href="/game">JUGAR DE NUEVO</a></section>
+    <section id="results-state" class="results-card hidden"><span class="empty-icon">★</span><p class="eyebrow">SESIÓN COMPLETADA</p><p id="result-profile" class="result-profile"></p><h1>¡Gran aventura!</h1><div class="final-score"><strong id="final-score">0</strong><span>XP</span></div><div class="results-grid"><p>✓ <b id="final-correct">0</b> aciertos</p><p>✕ <b id="final-wrong">0</b> errores</p><p>🔥 racha máxima: <b id="final-streak">0</b></p><p>Precisión: <b id="final-accuracy">0%</b></p></div><p id="result-ranking" class="result-ranking">Guardando resultado…</p><ol id="ranking-list" class="mini-ranking"></ol><button id="play-again" class="button primary" type="button">ELEGIR OTRO AVENTURERO</button><a class="dashboard-link" href="/dashboard">🏆 VER PODIO COMPLETO</a></section>
   </main>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
-  <script type="module" src="{{ url_for('static', filename='js/app.js') }}?v=20"></script>
+  <script type="module" src="{{ url_for('static', filename='js/app.js') }}?v=21"></script>
 </body>
 </html>
