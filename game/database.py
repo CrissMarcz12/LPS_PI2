@@ -67,7 +67,7 @@ class GameDatabase:
 
     def choose_profile(self, avatar_id: str, code: str, theme: str) -> dict[str, Any]:
         if theme not in THEMES: raise ValueError("El color elegido no existe.")
-        if avatar_id not in AVATARS or len(code) != 4 or any(char not in "1234" for char in code): raise ValueError("El ID debe usar cuatro botones del 1 al 4.")
+        if avatar_id not in AVATARS or len(code) != 4 or any(char not in "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789" for char in code): raise ValueError("El nombre debe tener cuatro letras o números.")
         base_name, avatar = AVATARS[avatar_id]
         profile_id, name = f"{avatar_id}-{code}", f"{base_name}-{code}"
         with self._connection() as connection:

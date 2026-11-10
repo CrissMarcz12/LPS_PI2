@@ -4,8 +4,9 @@ import { cameraReady, render, showState } from "./ui.js?v=9";
 
 const THEMES = [["violet", "💜", "Violeta"], ["sky", "💙", "Azul"], ["mint", "💚", "Verde"], ["coral", "🧡", "Coral"]];
 const AVATARS = [["killa", "Killa", "🌟"], ["inti", "Inti", "☀️"], ["maki", "Maki", "🐻"], ["sumaq", "Sumaq", "🌈"]];
+const ID_CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 let camera, autoRetryTimer, autoNextTimer, gameActive = false, savingResult = false;
-let profiles = [], selectedProfile = null, selectedAvatar = null, playerCode = "", screenMode = "profiles", soundEnabled = true, lastSavedScore = -1;
+let profiles = [], selectedProfile = null, selectedAvatar = null, playerCode = "", characterIndex = -1, screenMode = "profiles", soundEnabled = true, lastSavedScore = -1;
 
 function clearTimers() {
   if (autoRetryTimer) { clearTimeout(autoRetryTimer); autoRetryTimer = null; }
@@ -49,16 +50,31 @@ async function showProfileSelection() {
 function chooseProfile(avatarId) {
   selectedAvatar = AVATARS.find(avatar => avatar[0] === avatarId) || null;
   if (!selectedAvatar) return;
-  playerCode = ""; screenMode = "id-entry";
+  playerCode = ""; characterIndex = -1; screenMode = "id-entry";
   document.querySelector("#id-avatar").textContent = selectedAvatar[2];
   document.querySelector("#id-name").textContent = selectedAvatar[1];
   paintCode(); showState("id-state");
 }
-function paintCode() { document.querySelector("#player-code").textContent = playerCode.padEnd(4, "•").split("").join(" "); }
-function addCode(digit) {
+function paintCode() {
+  const active = characterIndex >= 0 ? ID_CHARACTERS[characterIndex] : "•";
+  const text = `${playerCode}${playerCode.length < 4 ? active : ""}`.padEnd(4, "•");
+  document.querySelector("#player-code").textContent = text.split("").join(" ");
+}
+function cycleCharacter() {
   if (playerCode.length >= 4) return;
-  playerCode += digit; paintCode();
+  characterIndex = (characterIndex + 1) % ID_CHARACTERS.length;
+  paintCode();
+}
+function confirmCharacter() {
+  if (playerCode.length >= 4) return;
+  if (characterIndex < 0) characterIndex = 0;
+  playerCode += ID_CHARACTERS[characterIndex];
+  characterIndex = -1; paintCode();
   if (playerCode.length === 4) showCustomizer();
+}
+function eraseCharacter() {
+  if (playerCode) playerCode = playerCode.slice(0, -1);
+  characterIndex = -1; paintCode();
 }
 function showCustomizer() {
   screenMode = "customize";
@@ -105,7 +121,12 @@ async function advanceRound() {
 window.RimayMakiControls = { press(buttonNumber) {
   const button = Number(buttonNumber);
   if (screenMode === "profiles") return chooseProfile(AVATARS[button - 1]?.[0]);
-  if (screenMode === "id-entry") return addCode(button);
+  if (screenMode === "id-entry") {
+    if (button === 1) return cycleCharacter();
+    if (button === 2) return confirmCharacter();
+    if (button === 3) return eraseCharacter();
+    if (button === 4) { playerCode = ""; characterIndex = -1; return paintCode(); }
+  }
   if (screenMode === "customize") return chooseTheme(THEMES[button - 1]?.[0]);
   if (!gameActive) return;
   if (button === 1) stopActivity();
@@ -114,6 +135,13 @@ window.RimayMakiControls = { press(buttonNumber) {
   if (button === 4) startActivity();
 } };
 document.addEventListener("rimaymaki-button", event => window.RimayMakiControls.press(event.detail));
+document.querySelector("#id-state").addEventListener("click", event => { if (event.target === document.querySelector("#id-state")) cycleCharacter(); });
+document.addEventListener("keydown", event => {
+  if (screenMode !== "id-entry") return;
+  if (event.key === "Enter") { event.preventDefault(); confirmCharacter(); return; }
+  if (event.key === "Backspace") { event.preventDefault(); eraseCharacter(); return; }
+  event.preventDefault(); cycleCharacter();
+});
 
 const fullscreen = document.querySelector("#fullscreen");
 async function enterFullscreen() { const surface = document.documentElement; try { if (surface.requestFullscreen) await surface.requestFullscreen(); else surface.webkitRequestFullscreen?.(); } catch (error) { console.warn("No se pudo activar pantalla completa", error); } }
