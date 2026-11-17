@@ -7,6 +7,67 @@ const AVATARS = [["robo", "UTECHIE-ROBO", "/static/assets/avatars/robot-base.png
 const ID_CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 let camera, autoRetryTimer, autoNextTimer, gameActive = false, savingResult = false;
 let profiles = [], selectedProfile = null, selectedAvatar = null, playerCode = "", characterIndex = -1, screenMode = "profiles", soundEnabled = true, lastSavedScore = -1;
+const BLE_SERVICE_UUID = "5d8f6d58-7190-4c4d-9f9e-910daebaa001";
+const BLE_CHANNEL_UUID = "5d8f6d58-7190-4c4d-9f9e-910daebaa002";
+let bluetoothDevice = null, bluetoothChannel = null, bluetoothWrite = Promise.resolve(), lastHardwareFeedback = "";
+
+function setBluetoothStatus(message, connected = false) {
+  const status = document.querySelector("#bluetooth-status");
+  const gameStatus = document.querySelector("#bluetooth-game-status");
+  const button = document.querySelector("#bluetooth-connect");
+  if (status) { status.textContent = message; status.classList.toggle("connected", connected); }
+  if (gameStatus) { gameStatus.textContent = connected ? "⌁ ESP32 conectado" : "⌁ ESP32 sin conectar"; gameStatus.classList.toggle("connected", connected); }
+  if (button) { button.textContent = connected ? "✓ ESP32 CONECTADO" : "⌁ CONECTAR ESP32"; button.classList.toggle("connected", connected); }
+}
+function bluetoothConnected() { return Boolean(bluetoothDevice?.gatt?.connected && bluetoothChannel); }
+function sendToEsp32(command) {
+  if (!bluetoothConnected()) return;
+  const payload = new TextEncoder().encode(command);
+  bluetoothWrite = bluetoothWrite.catch(() => undefined).then(() => bluetoothChannel.writeValue(payload)).catch(error => {
+    console.warn("No se pudo enviar al ESP32", error);
+    setBluetoothStatus("Control Bluetooth desconectado");
+  });
+}
+function handleBluetoothMessage(event) {
+  const message = new TextDecoder().decode(event.target.value).trim().toUpperCase();
+  console.log("ESP32:", message);
+  const pressed = message.match(/^BTN([1-4])$/);
+  if (pressed) window.RimayMakiControls.press(Number(pressed[1]));
+}
+function handleBluetoothDisconnect() {
+  bluetoothChannel = null;
+  setBluetoothStatus("Control Bluetooth desconectado");
+}
+async function connectBluetooth() {
+  if (!navigator.bluetooth) {
+    setBluetoothStatus("Usa Chrome en Android, Windows o Mac para conectar el ESP32.");
+    return;
+  }
+  if (bluetoothConnected()) return;
+  try {
+    setBluetoothStatus("Busca RIMAYMAKI-ESP32…");
+    bluetoothDevice = await navigator.bluetooth.requestDevice({ filters: [{ services: [BLE_SERVICE_UUID] }] });
+    bluetoothDevice.addEventListener("gattserverdisconnected", handleBluetoothDisconnect);
+    const server = await bluetoothDevice.gatt.connect();
+    const service = await server.getPrimaryService(BLE_SERVICE_UUID);
+    bluetoothChannel = await service.getCharacteristic(BLE_CHANNEL_UUID);
+    await bluetoothChannel.startNotifications();
+    bluetoothChannel.addEventListener("characteristicvaluechanged", handleBluetoothMessage);
+    setBluetoothStatus("Control ESP32 conectado", true);
+    sendToEsp32(soundEnabled ? "SILENCIO_OFF" : "SILENCIO_ON");
+    sendToEsp32("PING");
+  } catch (error) {
+    console.warn("Bluetooth no conectado", error);
+    setBluetoothStatus(error?.name === "NotFoundError" ? "No se eligió un ESP32." : "No se pudo conectar al ESP32.");
+  }
+}
+function syncHardwareFeedback(state) {
+  if (!bluetoothConnected() || !state?.result) return;
+  const key = `${state.result}:${state.currentRound}:${state.correctAnswers}:${state.wrongAnswers}:${state.score}`;
+  if (key === lastHardwareFeedback) return;
+  if (state.result === "correct") { lastHardwareFeedback = key; sendToEsp32("BIEN"); }
+  if (state.result === "incorrect") { lastHardwareFeedback = key; sendToEsp32("MAL"); }
+}
 
 function clearTimers() {
   if (autoRetryTimer) { clearTimeout(autoRetryTimer); autoRetryTimer = null; }
@@ -20,6 +81,7 @@ function apply(state) {
   if (!state || typeof state !== "object") throw new Error("Respuesta inválida del servicio.");
   if (!gameActive) return;
   if (state.result === "completed") { finishActivity(state); return; }
+  syncHardwareFeedback(state);
   if (state.score !== lastSavedScore) { lastSavedScore = state.score; safely(() => saveProgress(state)); }
   render(state); camera?.setCorrectionHint?.(state.result === "incorrect" ? state.errorHint : "");
   if (state.result === "incorrect" && !autoRetryTimer) {
@@ -100,6 +162,7 @@ async function startActivity() {
   if (!selectedProfile) return showProfileSelection();
   clearTimers(); camera?.stop();
   lastSavedScore = -1;
+  lastHardwareFeedback = "";
   const state = await safely(restartGame);
   if (!state) return;
   gameActive = true; screenMode = "game";
@@ -135,10 +198,11 @@ window.RimayMakiControls = { press(buttonNumber) {
   if (!gameActive) return;
   if (button === 1) stopActivity();
   if (button === 2) advanceRound();
-  if (button === 3) { soundEnabled = !soundEnabled; document.body.dataset.sound = soundEnabled ? "on" : "off"; }
+  if (button === 3) { soundEnabled = !soundEnabled; document.body.dataset.sound = soundEnabled ? "on" : "off"; sendToEsp32(soundEnabled ? "SILENCIO_OFF" : "SILENCIO_ON"); }
   if (button === 4) startActivity();
 } };
 document.addEventListener("rimaymaki-button", event => window.RimayMakiControls.press(event.detail));
+document.querySelector("#bluetooth-connect").addEventListener("click", connectBluetooth);
 document.querySelector("#id-state").addEventListener("click", event => { if (event.target === document.querySelector("#id-state")) cycleCharacter(); });
 document.addEventListener("keydown", event => {
   if (screenMode !== "id-entry") return;
