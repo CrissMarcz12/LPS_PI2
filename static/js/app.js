@@ -9,7 +9,7 @@ let camera, autoRetryTimer, autoNextTimer, gameActive = false, savingResult = fa
 let profiles = [], selectedProfile = null, selectedAvatar = null, playerCode = "", characterIndex = -1, screenMode = "profiles", soundEnabled = true, lastSavedScore = -1;
 const BLE_SERVICE_UUID = "5d8f6d58-7190-4c4d-9f9e-910daebaa001";
 const BLE_CHANNEL_UUID = "5d8f6d58-7190-4c4d-9f9e-910daebaa002";
-let bluetoothDevice = null, bluetoothChannel = null, bluetoothWrite = Promise.resolve(), lastHardwareFeedback = "";
+let bluetoothDevice = null, bluetoothChannel = null, bluetoothWrite = Promise.resolve(), lastHardwareFeedback = "", hardwareErrorActive = false;
 
 function setBluetoothStatus(message, connected = false) {
   const status = document.querySelector("#bluetooth-status");
@@ -64,9 +64,13 @@ async function connectBluetooth() {
 function syncHardwareFeedback(state) {
   if (!bluetoothConnected() || !state?.result) return;
   const key = `${state.result}:${state.currentRound}:${state.correctAnswers}:${state.wrongAnswers}:${state.score}`;
+  if (state.result !== "incorrect" && hardwareErrorActive) {
+    hardwareErrorActive = false;
+    sendToEsp32("DETENER_ERROR");
+  }
   if (key === lastHardwareFeedback) return;
   if (state.result === "correct") { lastHardwareFeedback = key; sendToEsp32("BIEN"); }
-  if (state.result === "incorrect") { lastHardwareFeedback = key; sendToEsp32("MAL"); }
+  if (state.result === "incorrect") { hardwareErrorActive = true; lastHardwareFeedback = key; sendToEsp32("MAL"); }
 }
 
 function clearTimers() {
@@ -163,6 +167,7 @@ async function startActivity() {
   clearTimers(); camera?.stop();
   lastSavedScore = -1;
   lastHardwareFeedback = "";
+  hardwareErrorActive = false;
   const state = await safely(restartGame);
   if (!state) return;
   gameActive = true; screenMode = "game";

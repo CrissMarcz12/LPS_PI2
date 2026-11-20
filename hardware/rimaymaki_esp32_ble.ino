@@ -76,7 +76,8 @@ void error() {
   sonar(310);
   feedbackActual = ERROR_SENA;
   faseFeedback = 0;
-  siguienteCambio = millis() + 380;
+  // El error se repite hasta que la aplicación indique que la mano cambió.
+  siguienteCambio = millis() + 220;
 }
 
 void actualizarFeedback() {
@@ -95,6 +96,23 @@ void actualizarFeedback() {
     sonar(1550);
     faseFeedback = 2;
     siguienteCambio = millis() + 220;
+    return;
+  }
+
+  // Error: rojo y buzzer alternados, despacio y visibles.
+  // No usamos delay(), por eso los botones Bluetooth siguen respondiendo.
+  if (feedbackActual == ERROR_SENA) {
+    if (faseFeedback == 0) {
+      digitalWrite(LED_ROJO, LOW);
+      apagarBuzzer();
+      faseFeedback = 1;
+      siguienteCambio = millis() + 170;
+    } else {
+      digitalWrite(LED_ROJO, HIGH);
+      sonar(310);
+      faseFeedback = 0;
+      siguienteCambio = millis() + 260;
+    }
     return;
   }
 
@@ -135,6 +153,7 @@ class CanalCallbacks : public BLECharacteristicCallbacks {
 
     if (comando == "BIEN") acierto();
     else if (comando == "MAL") error();
+    else if (comando == "DETENER_ERROR" && feedbackActual == ERROR_SENA) detenerFeedback();
     else if (comando == "SILENCIO_ON") {
       sonidoActivo = false;
       apagarBuzzer();
