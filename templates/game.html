@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=9">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/tablet-game.css') }}?v=12">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/results-avatars.css') }}?v=1">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/podium-overlay.css') }}?v=1">
 </head>
 <body class="game-page">
   <header class="topbar">
@@ -36,9 +37,10 @@
         </aside>
       </div>
     </section>
-    <section id="results-state" class="results-card hidden"><span class="empty-icon">★</span><p class="eyebrow">SESIÓN COMPLETADA</p><p id="result-profile" class="result-profile"></p><h1>¡Gran aventura!</h1><div class="final-score"><strong id="final-score">0</strong><span>XP</span></div><div class="results-grid"><p>✓ <b id="final-correct">0</b> aciertos</p><p>✕ <b id="final-wrong">0</b> errores</p><p>🔥 racha máxima: <b id="final-streak">0</b></p><p>Precisión: <b id="final-accuracy">0%</b></p></div><p id="result-ranking" class="result-ranking">Guardando resultado…</p><ol id="ranking-list" class="mini-ranking"></ol><p>Presiona el <b>botón 1</b> para volver al inicio.</p><button id="play-again" class="button primary" type="button">ELEGIR OTRO AVENTURERO</button><a class="dashboard-link" href="/dashboard">🏆 VER PODIO COMPLETO</a></section>
+    <section id="results-state" class="results-card hidden"><span class="empty-icon">★</span><p class="eyebrow">SESIÓN COMPLETADA</p><p id="result-profile" class="result-profile"></p><h1>¡Gran aventura!</h1><div class="final-score"><strong id="final-score">0</strong><span>XP</span></div><div class="results-grid"><p>✓ <b id="final-correct">0</b> aciertos</p><p>✕ <b id="final-wrong">0</b> errores</p><p>🔥 racha máxima: <b id="final-streak">0</b></p><p>Precisión: <b id="final-accuracy">0%</b></p></div><p id="result-ranking" class="result-ranking">Guardando resultado…</p><ol id="ranking-list" class="mini-ranking"></ol><p><b>Botón 4:</b> ver podio. Presiónalo otra vez para volver al inicio.</p><button id="play-again" class="button primary" type="button">ELEGIR OTRO AVENTURERO</button></section>
+    <section id="podium-overlay" class="podium-overlay hidden" aria-live="polite"><p class="eyebrow">RIMAYMAKI</p><h1>🏆 Podio general</h1><div id="podium-cards" class="podium-cards"></div><ol id="podium-list" class="podium-list"></ol><p>Presiona el <b>botón 4</b> para volver al inicio.</p></section>
   </main>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
-  <script type="module" src="{{ url_for('static', filename='js/app.js') }}?v=27"></script>
+  <script type="module" src="{{ url_for('static', filename='js/app.js') }}?v=29"></script>
 </body>
 </html>

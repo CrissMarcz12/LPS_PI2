@@ -9,9 +9,14 @@ let camera, autoRetryTimer, autoNextTimer, gameActive = false, savingResult = fa
 let profiles = [], selectedProfile = null, selectedAvatar = null, playerCode = "", characterIndex = -1, screenMode = "profiles", soundEnabled = true, lastSavedScore = -1;
 const BLE_SERVICE_UUID = "5d8f6d58-7190-4c4d-9f9e-910daebaa001";
 const BLE_CHANNEL_UUID = "5d8f6d58-7190-4c4d-9f9e-910daebaa002";
-let bluetoothDevice = null, bluetoothChannel = null, bluetoothWrite = Promise.resolve(), lastHardwareFeedback = "", hardwareErrorActive = false;
+let bluetoothDevice = null, bluetoothChannel = null, bluetoothWrite = Promise.resolve(), lastHardwareFeedback = "", hardwareErrorActive = false, lastErrorSoundRound = -1;
 const lastButtonPressedAt = [0, 0, 0, 0];
 const BUTTON_DEBOUNCE_MS = 220;
+let podiumOpen = false;
+const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[char]));
+const avatarMarkup = (avatar, name) => String(avatar || "").startsWith("/static/assets/avatars/")
+  ? `<img src="${escapeHtml(avatar)}" alt="${escapeHtml(name)}">`
+  : escapeHtml(avatar || "★");
 
 function setBluetoothStatus(message, connected = false) {
   const status = document.querySelector("#bluetooth-status");
@@ -39,6 +44,10 @@ function paintSound(enabled) {
 function toggleSound() {
   paintSound(!soundEnabled);
   return sendToEsp32(soundEnabled ? "SILENCIO_OFF" : "SILENCIO_ON");
+}
+function stopHardwareFeedback() {
+  if (hardwareErrorActive) sendToEsp32("DETENER_ERROR");
+  hardwareErrorActive = false;
 }
 function handleBluetoothMessage(event) {
   const message = new TextDecoder().decode(event.target.value).trim().toUpperCase();
@@ -86,13 +95,19 @@ async function connectBluetooth() {
 function syncHardwareFeedback(state) {
   if (!bluetoothConnected() || !state?.result) return;
   const key = `${state.result}:${state.currentRound}:${state.correctAnswers}:${state.wrongAnswers}:${state.score}`;
-  if (state.result !== "incorrect" && hardwareErrorActive) {
-    hardwareErrorActive = false;
-    sendToEsp32("DETENER_ERROR");
-  }
+  if (state.result !== "incorrect" && hardwareErrorActive) stopHardwareFeedback();
   if (key === lastHardwareFeedback) return;
   if (state.result === "correct") { lastHardwareFeedback = key; sendToEsp32("BIEN"); }
-  if (state.result === "incorrect") { hardwareErrorActive = true; lastHardwareFeedback = key; sendToEsp32("MAL"); }
+  if (state.result === "incorrect") {
+    // Una postura equivocada puede seguir frente a la cámara varios frames.
+    // Solo avisamos una vez por letra para que el buzzer no sea insistente.
+    if (lastErrorSoundRound !== state.currentRound) {
+      lastErrorSoundRound = state.currentRound;
+      hardwareErrorActive = true;
+      sendToEsp32("MAL");
+    }
+    lastHardwareFeedback = key;
+  }
 }
 
 function clearTimers() {
@@ -147,8 +162,9 @@ async function showProfileSelection() {
   showState("start-state");
 }
 async function showWelcome() {
-  clearTimers(); camera?.stop(); gameActive = false; savingResult = false; screenMode = "welcome";
+  clearTimers(); camera?.stop(); stopHardwareFeedback(); gameActive = false; savingResult = false; screenMode = "welcome";
   selectedProfile = null; selectedAvatar = null; playerCode = ""; characterIndex = -1;
+  podiumOpen = false; document.querySelector("#podium-overlay").classList.add("hidden");
   document.querySelector("#profile-grid").classList.add("hidden");
   document.querySelector("#start-heading").textContent = "Presiona botón 1 para comenzar";
   document.querySelector("#start-copy").textContent = "Conecta el control y presiona el botón 1 para elegir tu aventurero.";
@@ -213,9 +229,9 @@ async function launchGame() {
 }
 async function startActivity() {
   if (!selectedProfile) return showWelcome();
-  clearTimers(); camera?.stop();
+  clearTimers(); camera?.stop(); stopHardwareFeedback();
   lastSavedScore = -1;
-  savingResult = false;
+  savingResult = false; lastErrorSoundRound = -1;
   lastHardwareFeedback = "";
   hardwareErrorActive = false;
   const state = await safely(restartGame);
@@ -223,16 +239,38 @@ async function startActivity() {
   gameActive = true; screenMode = "game";
   if (state.target) await safely(startRecognition); else apply(state);
 }
-async function stopActivity() { clearTimers(); camera?.stop(); gameActive = false; const saved = await safely(leaveGame); if (saved?.profiles) profiles = saved.profiles; showWelcome(); }
+async function stopActivity() { clearTimers(); camera?.stop(); stopHardwareFeedback(); gameActive = false; const saved = await safely(leaveGame); if (saved?.profiles) profiles = saved.profiles; showWelcome(); }
 async function finishActivity(state) {
   if (savingResult) return;
-  savingResult = true; gameActive = false; clearTimers(); camera?.stop();
+  savingResult = true; gameActive = false; clearTimers(); camera?.stop(); stopHardwareFeedback();
   const saved = await safely(completeGame);
   if (saved?.profiles) profiles = saved.profiles;
-  screenMode = "results"; render(state, saved);
+  podiumOpen = false; screenMode = "results"; render(state, saved);
+}
+async function endActivity() {
+  if (!gameActive || savingResult) return;
+  savingResult = true;
+  const state = await safely(getSession);
+  clearTimers(); camera?.stop(); stopHardwareFeedback(); gameActive = false;
+  const saved = await safely(leaveGame);
+  if (saved?.profiles) profiles = saved.profiles;
+  podiumOpen = false; screenMode = "results";
+  if (state) render({...state, result: "completed"}, saved);
+}
+async function showPodium() {
+  const data = await safely(getProfiles);
+  if (!data) return;
+  const players = data.profiles || [];
+  const cards = document.querySelector("#podium-cards");
+  const list = document.querySelector("#podium-list");
+  cards.innerHTML = players.slice(0, 3).map(player => `<article class="podium-card place-${player.position}"><span>${player.position === 1 ? "🥇" : player.position === 2 ? "🥈" : "🥉"}</span><div>${avatarMarkup(player.avatar, player.name)}</div><strong>${escapeHtml(player.name)}</strong><b>${player.totalScore} ⭐</b></article>`).join("");
+  list.innerHTML = players.map(player => `<li><span>#${player.position} ${avatarMarkup(player.avatar, player.name)} ${escapeHtml(player.name)}</span><b>${player.totalScore} ⭐</b><em>✓ ${player.averageAccuracy}%</em></li>`).join("");
+  podiumOpen = true;
+  document.querySelector("#podium-overlay").classList.remove("hidden");
 }
 async function advanceRound() {
   if (!gameActive) return;
+  stopHardwareFeedback();
   const state = await safely(nextRound);
   if (!state) return;
   if (state.result === "completed") { apply(state); return; }
@@ -256,13 +294,14 @@ window.RimayMakiControls = { press(buttonNumber) {
   if (screenMode === "customize") return chooseTheme(THEMES[button - 1]?.[0]);
   if (screenMode === "results") {
     if (button === 1) return showWelcome();
+    if (button === 4) return podiumOpen ? showWelcome() : showPodium();
     return;
   }
   if (!gameActive) return;
-  if (button === 1) stopActivity();
+  if (button === 1) startActivity();
   if (button === 2) advanceRound();
   if (button === 3) toggleSound();
-  if (button === 4) startActivity();
+  if (button === 4) endActivity();
 } };
 document.addEventListener("rimaymaki-button", event => window.RimayMakiControls.press(event.detail));
 document.querySelector("#bluetooth-connect").addEventListener("click", connectBluetooth);
