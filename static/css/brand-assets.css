@@ -1,0 +1,24 @@
+/* Imagen de marca y recorte limpio del avatar principal. */
+.brand-mark,
+.logo-mark {
+  overflow: hidden;
+  background-color: transparent !important;
+  background-image: url('/static/assets/brand/rimaymaki-logo.png') !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: 88% auto !important;
+  color: transparent !important;
+  font-size: 0 !important;
+  text-indent: -9999px;
+}
+
+.game-page .start-brand {
+  overflow: hidden;
+  background-image: url('/static/assets/brand/rimaymaki-logo.png'), linear-gradient(135deg,#ffba4a,#f26e9b) !important;
+  background-position: center, center !important;
+  background-repeat: no-repeat, no-repeat !important;
+  background-size: 92% auto, 100% 100% !important;
+  color: transparent !important;
+  font-size: 0 !important;
+  text-indent: -9999px;
+}
