@@ -1,6 +1,6 @@
 import { completeGame, getProfiles, getSession, leaveGame, nextRound, restartGame, retryRound, saveProgress, selectProfile, sendLandmarks } from "./game.js";
 import { LocalHandCamera } from "./recognition.js";
-import { cameraReady, render, showState } from "./ui.js?v=9";
+import { cameraReady, render, showState } from "./ui.js?v=10";
 
 const THEMES = [["violet", "💜", "Violeta"], ["sky", "💙", "Azul"], ["mint", "💚", "Verde"], ["coral", "🧡", "Coral"]];
 const AVATARS = [["robo", "UTECHIE-ROBO", "/static/assets/avatars/robot-base.png"], ["llamabot", "UTECHIE-LLAMA", "/static/assets/avatars/robot-llama.png"], ["navibot", "UTECHIE-NAVIDAD", "/static/assets/avatars/robot-navidad.png"], ["perubot", "UTECHIE-PERÚ", "/static/assets/avatars/robot-peru.png"]];
@@ -160,12 +160,26 @@ async function chooseTheme(theme) {
   const response = await safely(() => selectProfile(selectedAvatar[0], playerCode, theme));
   if (!response?.success) return;
   selectedProfile = response.profile; profiles = response.profiles;
-  await enterFullscreen(); await startActivity();
+  showReadyToStart();
+}
+function showReadyToStart() {
+  clearTimers(); camera?.stop(); gameActive = false; savingResult = false; screenMode = "ready";
+  const avatarImage = selectedAvatar?.[2] || selectedProfile?.avatar_image || "";
+  const avatarName = selectedAvatar?.[1] || selectedProfile?.avatar_name || "Jugador";
+  showAvatar("#ready-avatar", avatarImage, avatarName);
+  document.querySelector("#ready-name").textContent = `${avatarName}-${playerCode}`;
+  showState("ready-state");
+}
+async function launchGame() {
+  if (!selectedProfile) return showProfileSelection();
+  await enterFullscreen();
+  await startActivity();
 }
 async function startActivity() {
   if (!selectedProfile) return showProfileSelection();
   clearTimers(); camera?.stop();
   lastSavedScore = -1;
+  savingResult = false;
   lastHardwareFeedback = "";
   hardwareErrorActive = false;
   const state = await safely(restartGame);
@@ -200,6 +214,14 @@ window.RimayMakiControls = { press(buttonNumber) {
     if (button === 4) { playerCode = ""; characterIndex = -1; return paintCode(); }
   }
   if (screenMode === "customize") return chooseTheme(THEMES[button - 1]?.[0]);
+  if (screenMode === "ready") {
+    if (button === 1) return launchGame();
+    return;
+  }
+  if (screenMode === "results") {
+    if (button === 1) return launchGame();
+    return;
+  }
   if (!gameActive) return;
   if (button === 1) stopActivity();
   if (button === 2) advanceRound();
@@ -223,5 +245,6 @@ fullscreen.addEventListener("click", toggleFullscreen);
 document.querySelector("#exit-game").addEventListener("click", stopActivity);
 document.querySelectorAll(".start-fullscreen").forEach(button => button.addEventListener("click", toggleFullscreen));
 document.querySelector("#play-again").addEventListener("click", showProfileSelection);
+document.querySelector("#start-game").addEventListener("click", launchGame);
 document.addEventListener("fullscreenchange", () => { const active = Boolean(document.fullscreenElement); document.body.classList.toggle("immersive", active); fullscreen.textContent = active ? "×" : "⛶"; fullscreen.setAttribute("aria-label", active ? "Salir de pantalla completa" : "Activar pantalla completa"); });
 showProfileSelection();
