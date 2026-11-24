@@ -52,6 +52,15 @@ def create_app() -> Flask:
         # La tableta entra directamente a la experiencia de juego.
         return redirect("/game", code=302)
 
+    @app.get("/favicon.ico")
+    def favicon():
+        """Muestra el logo de RimayMaki en la pestaña del navegador."""
+        return send_file(
+            Path(app.static_folder) / "assets" / "brand" / "rimaymaki-logo.png",
+            mimetype="image/png",
+            max_age=60 * 60 * 24 * 30,
+        )
+
     @app.get("/game")
     def game():
         return render_template("game.html")
