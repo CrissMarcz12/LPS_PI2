@@ -10,6 +10,8 @@ let profiles = [], selectedProfile = null, selectedAvatar = null, playerCode = "
 const BLE_SERVICE_UUID = "5d8f6d58-7190-4c4d-9f9e-910daebaa001";
 const BLE_CHANNEL_UUID = "5d8f6d58-7190-4c4d-9f9e-910daebaa002";
 let bluetoothDevice = null, bluetoothChannel = null, bluetoothWrite = Promise.resolve(), lastHardwareFeedback = "", hardwareErrorActive = false;
+const lastButtonPressedAt = [0, 0, 0, 0];
+const BUTTON_DEBOUNCE_MS = 220;
 
 function setBluetoothStatus(message, connected = false) {
   const status = document.querySelector("#bluetooth-status");
@@ -21,18 +23,37 @@ function setBluetoothStatus(message, connected = false) {
 }
 function bluetoothConnected() { return Boolean(bluetoothDevice?.gatt?.connected && bluetoothChannel); }
 function sendToEsp32(command) {
-  if (!bluetoothConnected()) return;
+  if (!bluetoothConnected()) return Promise.resolve(false);
   const payload = new TextEncoder().encode(command);
-  bluetoothWrite = bluetoothWrite.catch(() => undefined).then(() => bluetoothChannel.writeValue(payload)).catch(error => {
+  bluetoothWrite = bluetoothWrite.catch(() => undefined).then(() => bluetoothChannel.writeValue(payload)).then(() => true).catch(error => {
     console.warn("No se pudo enviar al ESP32", error);
     setBluetoothStatus("Control Bluetooth desconectado");
+    return false;
   });
+  return bluetoothWrite;
+}
+function paintSound(enabled) {
+  soundEnabled = enabled;
+  document.body.dataset.sound = enabled ? "on" : "off";
+}
+function toggleSound() {
+  paintSound(!soundEnabled);
+  return sendToEsp32(soundEnabled ? "SILENCIO_OFF" : "SILENCIO_ON");
 }
 function handleBluetoothMessage(event) {
   const message = new TextDecoder().decode(event.target.value).trim().toUpperCase();
   console.log("ESP32:", message);
   const pressed = message.match(/^BTN([1-4])$/);
-  if (pressed) window.RimayMakiControls.press(Number(pressed[1]));
+  if (pressed) {
+    const button = Number(pressed[1]);
+    const now = performance.now();
+    if (now - lastButtonPressedAt[button - 1] < BUTTON_DEBOUNCE_MS) return;
+    lastButtonPressedAt[button - 1] = now;
+    window.RimayMakiControls.press(button);
+    return;
+  }
+  if (message === "SONIDO_ACTIVADO") paintSound(true);
+  if (message === "SONIDO_APAGADO") paintSound(false);
 }
 function handleBluetoothDisconnect() {
   bluetoothChannel = null;
@@ -54,6 +75,7 @@ async function connectBluetooth() {
     await bluetoothChannel.startNotifications();
     bluetoothChannel.addEventListener("characteristicvaluechanged", handleBluetoothMessage);
     setBluetoothStatus("Control ESP32 conectado", true);
+    paintSound(soundEnabled);
     sendToEsp32(soundEnabled ? "SILENCIO_OFF" : "SILENCIO_ON");
     sendToEsp32("PING");
   } catch (error) {
@@ -97,6 +119,12 @@ function apply(state) {
 }
 async function startRecognition() {
   const state = await getSession(); apply(state); if (!state.target) return;
+  // Al cambiar de letra la cámara ya está funcionando: conservarla evita que
+  // Chrome vuelva a pedir permisos o se quede sin stream en una tablet.
+  if (camera?.running) {
+    cameraReady(true, "Cámara activa · detectando mano");
+    return;
+  }
   camera?.stop();
   camera = new LocalHandCamera(document.querySelector("#camera"), document.querySelector("#landmarks"), apply, () => cameraReady(false, "No pudimos usar la cámara. Permite el acceso e inténtalo otra vez."), sendLandmarks, state.recognitionIntervalMs || 100);
   const active = await camera.start();
@@ -121,7 +149,6 @@ async function showProfileSelection() {
 async function showWelcome() {
   clearTimers(); camera?.stop(); gameActive = false; savingResult = false; screenMode = "welcome";
   selectedProfile = null; selectedAvatar = null; playerCode = ""; characterIndex = -1;
-  await safely(getProfiles);
   document.querySelector("#profile-grid").classList.add("hidden");
   document.querySelector("#start-heading").textContent = "Presiona botón 1 para comenzar";
   document.querySelector("#start-copy").textContent = "Conecta el control y presiona el botón 1 para elegir tu aventurero.";
@@ -172,8 +199,10 @@ function showCustomizer() {
 }
 async function chooseTheme(theme) {
   if (!selectedAvatar || playerCode.length !== 4) return;
+  // Evita que una pulsación repetida cambie de color o inicie dos veces.
+  screenMode = "starting";
   const response = await safely(() => selectProfile(selectedAvatar[0], playerCode, theme));
-  if (!response?.success) return;
+  if (!response?.success) { showCustomizer(); return; }
   selectedProfile = response.profile; profiles = response.profiles;
   await launchGame();
 }
@@ -204,10 +233,10 @@ async function finishActivity(state) {
 }
 async function advanceRound() {
   if (!gameActive) return;
-  camera?.stop(); const state = await safely(nextRound);
+  const state = await safely(nextRound);
   if (!state) return;
   if (state.result === "completed") { apply(state); return; }
-  await safely(startRecognition);
+  apply(state);
 }
 
 // El puente físico (Bluetooth o Serial) solo debe llamar press(1..4).
@@ -232,7 +261,7 @@ window.RimayMakiControls = { press(buttonNumber) {
   if (!gameActive) return;
   if (button === 1) stopActivity();
   if (button === 2) advanceRound();
-  if (button === 3) { soundEnabled = !soundEnabled; document.body.dataset.sound = soundEnabled ? "on" : "off"; sendToEsp32(soundEnabled ? "SILENCIO_OFF" : "SILENCIO_ON"); }
+  if (button === 3) toggleSound();
   if (button === 4) startActivity();
 } };
 document.addEventListener("rimaymaki-button", event => window.RimayMakiControls.press(event.detail));
