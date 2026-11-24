@@ -33,10 +33,9 @@ class BrowserTrainingCollector:
         return self._hands
 
     def _make_preview_classifier(self) -> AvailableLettersClassifier | None:
-        models = {
-            label: model for label, model in available_models(MODELS_DIR, SEQUENCE_LENGTH).items()
-            if sample_count(label) > 0
-        }
+        # La prueba usa cualquier modelo válido, aunque las muestras se hayan
+        # guardado en otro volumen al publicar la aplicación.
+        models = available_models(MODELS_DIR, SEQUENCE_LENGTH)
         # Mismo umbral fijo que emplea el juego: la prueba del entrenador debe
         # anticipar exactamente lo que verá el niño, no ser más estricta.
         threshold = 0.45 if len(models) == 1 else 0.625

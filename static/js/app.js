@@ -111,7 +111,22 @@ async function showProfileSelection() {
   clearTimers(); camera?.stop(); gameActive = false; savingResult = false; screenMode = "profiles";
   const data = await safely(getProfiles);
   if (data) { profiles = data.profiles; selectedProfile = profiles.find(profile => profile.id === data.selectedProfileId) || null; }
-  paintProfiles(); showState("start-state");
+  paintProfiles();
+  document.querySelector("#profile-grid").classList.remove("hidden");
+  document.querySelector("#start-heading").textContent = "Elige tu aventurero";
+  document.querySelector("#start-copy").textContent = "Usa los botones 1, 2, 3 o 4 para elegirlo.";
+  document.querySelector("#begin-player-flow").classList.add("hidden");
+  showState("start-state");
+}
+async function showWelcome() {
+  clearTimers(); camera?.stop(); gameActive = false; savingResult = false; screenMode = "welcome";
+  selectedProfile = null; selectedAvatar = null; playerCode = ""; characterIndex = -1;
+  await safely(getProfiles);
+  document.querySelector("#profile-grid").classList.add("hidden");
+  document.querySelector("#start-heading").textContent = "Presiona botón 1 para comenzar";
+  document.querySelector("#start-copy").textContent = "Conecta el control y presiona el botón 1 para elegir tu aventurero.";
+  document.querySelector("#begin-player-flow").classList.remove("hidden");
+  showState("start-state");
 }
 function chooseProfile(avatarId) {
   selectedAvatar = AVATARS.find(avatar => avatar[0] === avatarId) || null;
@@ -160,23 +175,15 @@ async function chooseTheme(theme) {
   const response = await safely(() => selectProfile(selectedAvatar[0], playerCode, theme));
   if (!response?.success) return;
   selectedProfile = response.profile; profiles = response.profiles;
-  showReadyToStart();
-}
-function showReadyToStart() {
-  clearTimers(); camera?.stop(); gameActive = false; savingResult = false; screenMode = "ready";
-  const avatarImage = selectedAvatar?.[2] || selectedProfile?.avatar_image || "";
-  const avatarName = selectedAvatar?.[1] || selectedProfile?.avatar_name || "Jugador";
-  showAvatar("#ready-avatar", avatarImage, avatarName);
-  document.querySelector("#ready-name").textContent = `${avatarName}-${playerCode}`;
-  showState("ready-state");
+  await launchGame();
 }
 async function launchGame() {
-  if (!selectedProfile) return showProfileSelection();
+  if (!selectedProfile) return showWelcome();
   await enterFullscreen();
   await startActivity();
 }
 async function startActivity() {
-  if (!selectedProfile) return showProfileSelection();
+  if (!selectedProfile) return showWelcome();
   clearTimers(); camera?.stop();
   lastSavedScore = -1;
   savingResult = false;
@@ -187,7 +194,7 @@ async function startActivity() {
   gameActive = true; screenMode = "game";
   if (state.target) await safely(startRecognition); else apply(state);
 }
-async function stopActivity() { clearTimers(); camera?.stop(); gameActive = false; const saved = await safely(leaveGame); if (saved?.profiles) profiles = saved.profiles; showProfileSelection(); }
+async function stopActivity() { clearTimers(); camera?.stop(); gameActive = false; const saved = await safely(leaveGame); if (saved?.profiles) profiles = saved.profiles; showWelcome(); }
 async function finishActivity(state) {
   if (savingResult) return;
   savingResult = true; gameActive = false; clearTimers(); camera?.stop();
@@ -206,6 +213,10 @@ async function advanceRound() {
 // El puente físico (Bluetooth o Serial) solo debe llamar press(1..4).
 window.RimayMakiControls = { press(buttonNumber) {
   const button = Number(buttonNumber);
+  if (screenMode === "welcome") {
+    if (button === 1) return showProfileSelection();
+    return;
+  }
   if (screenMode === "profiles") return chooseProfile(AVATARS[button - 1]?.[0]);
   if (screenMode === "id-entry") {
     if (button === 1) return cycleCharacter();
@@ -214,12 +225,8 @@ window.RimayMakiControls = { press(buttonNumber) {
     if (button === 4) { playerCode = ""; characterIndex = -1; return paintCode(); }
   }
   if (screenMode === "customize") return chooseTheme(THEMES[button - 1]?.[0]);
-  if (screenMode === "ready") {
-    if (button === 1) return launchGame();
-    return;
-  }
   if (screenMode === "results") {
-    if (button === 1) return launchGame();
+    if (button === 1) return showWelcome();
     return;
   }
   if (!gameActive) return;
@@ -245,6 +252,6 @@ fullscreen.addEventListener("click", toggleFullscreen);
 document.querySelector("#exit-game").addEventListener("click", stopActivity);
 document.querySelectorAll(".start-fullscreen").forEach(button => button.addEventListener("click", toggleFullscreen));
 document.querySelector("#play-again").addEventListener("click", showProfileSelection);
-document.querySelector("#start-game").addEventListener("click", launchGame);
+document.querySelector("#begin-player-flow").addEventListener("click", showProfileSelection);
 document.addEventListener("fullscreenchange", () => { const active = Boolean(document.fullscreenElement); document.body.classList.toggle("immersive", active); fullscreen.textContent = active ? "×" : "⛶"; fullscreen.setAttribute("aria-label", active ? "Salir de pantalla completa" : "Activar pantalla completa"); });
-showProfileSelection();
+showWelcome();
