@@ -1,0 +1,5 @@
+.result-profile{display:flex;align-items:center;justify-content:center;gap:8px}
+.result-avatar{width:34px;height:34px;object-fit:contain;vertical-align:middle}
+.mini-ranking li{align-items:center}
+.mini-ranking li>span{display:flex;align-items:center;gap:6px}
+.mini-avatar{width:28px;height:28px;object-fit:contain;vertical-align:middle}

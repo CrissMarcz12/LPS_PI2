@@ -1,4 +1,12 @@
 const $ = id => document.getElementById(id);
+const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[char]));
+const avatarMarkup = (avatar, name, className = "") => {
+  const safeAvatar = String(avatar || "");
+  if (safeAvatar.startsWith("/static/assets/avatars/")) {
+    return `<img class="${className}" src="${escapeHtml(safeAvatar)}" alt="Avatar de ${escapeHtml(name)}">`;
+  }
+  return escapeHtml(safeAvatar);
+};
 export function showState(name) { ["start-state","id-state","customize-state","empty-state","game-state","results-state"].forEach(id => $(id).classList.toggle("hidden", id !== name)); }
 export function render(state, saved = null) {
   if (state.result === "completed") { renderResults(state, saved); return; }
@@ -52,8 +60,8 @@ function renderResults(state, saved = null) {
   showState("results-state");
   [["final-score",state.score],["final-correct",state.correctAnswers],["final-wrong",state.wrongAnswers],["final-streak",state.maxStreak],["final-accuracy",`${state.accuracy}%`]].forEach(([id,value]) => $(id).textContent=value);
   const profile = saved?.profile;
-  $("result-profile").textContent = profile ? `${profile.avatar} ${profile.name}` : "";
+  $("result-profile").innerHTML = profile ? `${avatarMarkup(profile.avatar, profile.name, "result-avatar")}<span>${escapeHtml(profile.name)}</span>` : "";
   $("result-ranking").textContent = profile ? `Posición actual: #${profile.position} · ${profile.totalScore} estrellas acumuladas` : "Guardando resultado…";
-  $("ranking-list").innerHTML = (saved?.profiles || []).slice(0, 4).map(player => `<li class="theme-${player.theme}"><span>#${player.position} ${player.avatar} ${player.name}</span><b>${player.totalScore} ⭐</b></li>`).join("");
+  $("ranking-list").innerHTML = (saved?.profiles || []).slice(0, 4).map(player => `<li class="theme-${escapeHtml(player.theme)}"><span>#${player.position} ${avatarMarkup(player.avatar, player.name, "mini-avatar")} ${escapeHtml(player.name)}</span><b>${player.totalScore} ⭐</b></li>`).join("");
 }
 export function cameraReady(active, message) { $("camera-dot").classList.toggle("active", active); $("camera-label").textContent = message; $("camera-message").classList.toggle("hidden", active); if (!active) $("camera-message").textContent = message; }
